@@ -9,12 +9,30 @@ function cloneState(state: GameState): GameState {
     communityCards: [...state.communityCards],
     players: state.players.map((player) => ({ ...player, holeCards: [...player.holeCards] })),
     pots: state.pots.map((pot) => ({ ...pot, eligiblePlayerIds: [...pot.eligiblePlayerIds], winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
+    refunds: (state.refunds ?? []).map((refund) => ({ ...refund })),
     actionHistory: [...state.actionHistory],
   };
 }
 
 function actionable(player: PlayerState): boolean {
   return !player.folded && !player.allIn && player.stack >= 0;
+}
+
+export function countActionablePlayers(state: GameState): number {
+  return state.players.filter(actionable).length;
+}
+
+function shouldRunout(state: GameState): boolean {
+  const livePlayers = state.players.filter((player) => !player.folded).length;
+  return livePlayers >= 2 && countActionablePlayers(state) <= 1;
+}
+
+function isShortBigBlindDecision(state: GameState, player: PlayerState): boolean {
+  return state.players.filter((entry) => !entry.folded).length >= 3
+    && state.street === 'PRE_FLOP'
+    && state.currentBet === state.bigBlind
+    && !player.hasActedStreet
+    && state.players.some((entry) => !entry.folded && entry.streetContribution < state.bigBlind);
 }
 
 function playerFor(state: GameState, playerId: string): PlayerState | undefined {
@@ -48,17 +66,18 @@ export function getLegalActions(state: GameState, playerId: string): LegalAction
   if (!player || state.actingSeat !== player.seat || !actionable(player)) return [];
   if (state.street === 'SHOWDOWN' || state.street === 'SETTLEMENT') return [];
   const toCall = Math.max(0, state.currentBet - player.streetContribution);
+  const onlyActionablePlayer = shouldRunout(state) && !isShortBigBlindDecision(state, player);
   const actions: LegalAction[] = [{ kind: 'fold' }];
   if (toCall > 0) actions.push({ kind: 'call', amount: Math.min(toCall, player.stack) });
   else actions.push({ kind: 'check' });
   const maxAmount = player.streetContribution + player.stack;
-  if (state.currentBet === 0) {
+  if (!onlyActionablePlayer && state.currentBet === 0) {
     if (maxAmount >= state.bigBlind) actions.push({ kind: 'bet-to', minAmount: state.bigBlind, maxAmount });
-  } else {
+  } else if (!onlyActionablePlayer && !player.hasActedStreet) {
     const minAmount = state.currentBet + state.lastFullRaise;
     if (maxAmount >= minAmount) actions.push({ kind: 'raise-to', minAmount, maxAmount });
   }
-  actions.push({ kind: 'all-in', amount: player.stack });
+  if (!onlyActionablePlayer || player.stack <= toCall) actions.push({ kind: 'all-in', amount: player.stack });
   return actions;
 }
 
@@ -115,9 +134,12 @@ export function applyAction(state: GameState, command: { playerId: string; actio
   if (targetContribution > next.currentBet) {
     next.currentBet = targetContribution;
     const increase = targetContribution - previousBet;
-    if (previousBet === 0 || increase >= next.lastFullRaise) next.lastFullRaise = increase;
-    for (const other of next.players) {
-      if (other.id !== nextPlayer.id && !other.folded && !other.allIn) other.hasActedStreet = false;
+    const isFullRaise = previousBet === 0 || increase >= next.lastFullRaise;
+    if (isFullRaise) {
+      next.lastFullRaise = increase;
+      for (const other of next.players) {
+        if (other.id !== nextPlayer.id && !other.folded && !other.allIn) other.hasActedStreet = false;
+      }
     }
   }
   next.actionHistory.push({
@@ -170,7 +192,7 @@ export function advanceStreet(state: GameState): GameState {
     return next;
   }
   const actionablePlayers = next.players.filter(actionable);
-  if (actionablePlayers.length === 0 || next.players.filter((player) => !player.folded).length <= 1) {
+  if (actionablePlayers.length <= 1 || next.players.filter((player) => !player.folded).length <= 1) {
     return advanceStreet(next);
   }
   next.actingSeat = getActionOrder(next.tableSize, next.dealerSeat, next.street)

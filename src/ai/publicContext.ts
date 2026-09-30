@@ -35,17 +35,25 @@ export type PublicTableContext = {
   opponentModels: Readonly<Record<string, PlayerModel>>;
 };
 
-function positionFor(state: GameState, player: PlayerState): Position {
+export function positionFor(state: GameState, player: PlayerState): Position {
   if (state.tableSize === 2) return 'HEADS_UP';
   if (player.seat === state.smallBlindSeat || player.seat === state.bigBlindSeat) return 'BLINDS';
-  const seats = state.players.filter((entry) => !entry.folded).map((entry) => entry.seat).sort((left, right) => left - right);
+  // Position is fixed from the occupied seats at hand start. Folded seats
+  // remain part of the ring and must not cause the remaining ranges to shift.
+  const seats = state.players.map((entry) => entry.seat).sort((left, right) => left - right);
   const dealerIndex = seats.indexOf(state.dealerSeat);
   const playerIndex = seats.indexOf(player.seat);
   if (dealerIndex < 0 || playerIndex < 0) return 'MIDDLE';
   const distance = (playerIndex - dealerIndex + seats.length) % seats.length;
-  if (state.tableSize >= 8 && distance <= 2) return 'EARLY';
-  if (distance >= seats.length - 2) return 'LATE';
-  return distance <= Math.ceil(seats.length / 2) ? 'MIDDLE' : 'LATE';
+  if (distance === 0) return 'LATE';
+  if (state.tableSize >= 8) {
+    if (distance <= 3) return 'EARLY';
+    if (distance >= seats.length - 2) return 'LATE';
+    return 'MIDDLE';
+  }
+  if (distance === seats.length - 1) return 'LATE';
+  if (distance <= 3) return 'EARLY';
+  return 'MIDDLE';
 }
 
 function publicPlayer(player: PlayerState): PublicPlayerView {

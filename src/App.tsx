@@ -65,12 +65,16 @@ export function createNextHand(current: GameState): GameState {
   return next;
 }
 
-function handSummary(state: GameState): HandSummary | null {
+export function handSummary(state: GameState): HandSummary | null {
   const human = state.players.find((player) => player.isHuman);
   if (!human || !state.handId) return null;
   const playerAward = state.pots.flatMap((pot) => pot.awards)
     .filter((award) => award.playerId === human.id)
     .reduce((sum, award) => sum + award.amount, 0);
+  const playerRefund = (state.refunds ?? [])
+    .filter((refund) => refund.playerId === human.id)
+    .reduce((sum, refund) => sum + refund.amount, 0);
+  const humanAllIn = state.actionHistory.some((record) => record.playerId === human.id && record.action === 'all-in');
   const winnerPots = state.pots.filter((pot) => pot.winnerPlayerIds.includes(human.id));
   const hasSplitPot = winnerPots.some((pot) => pot.winnerPlayerIds.length > 1);
   const evaluation = !human.folded && state.communityCards.length >= 5
@@ -90,12 +94,12 @@ function handSummary(state: GameState): HandSummary | null {
     finalCategory: evaluation?.labelZh ?? null,
     finalPot: state.pots.reduce((sum, pot) => sum + pot.amount, 0),
     playerContribution: human.handContribution,
-    playerNet: playerAward - human.handContribution,
+    playerNet: playerAward + playerRefund - human.handContribution,
     result: human.folded ? 'FOLD' : playerAward === 0 ? 'LOSS' : hasSplitPot ? 'SPLIT' : 'WIN',
     actionHistory: state.actionHistory.map((record) => ({ ...record })),
     potResults: state.pots.map((pot) => ({ amount: pot.amount, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
-    allIn: state.players.some((player) => player.allIn),
-    allInWon: state.players.some((player) => player.allIn) && playerAward > 0,
+    allIn: humanAllIn,
+    allInWon: humanAllIn && playerAward > 0,
   };
 }
 

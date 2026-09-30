@@ -1,4 +1,4 @@
-import type { Pot } from './pot';
+import type { Pot, PotRefund } from './pot';
 
 export type PotParticipant = {
   id: string;
@@ -7,7 +7,12 @@ export type PotParticipant = {
   folded?: boolean;
 };
 
-export type { Pot } from './pot';
+export type PotBuildResult = {
+  pots: Pot[];
+  refunds: PotRefund[];
+};
+
+export type { Pot, PotRefund } from './pot';
 
 function validateParticipants(players: readonly PotParticipant[]): void {
   const ids = new Set<string>();
@@ -28,10 +33,23 @@ function validateParticipants(players: readonly PotParticipant[]): void {
  * layers. Folded players still contribute chips to a layer, but cannot be
  * listed as eligible winners for that layer.
  */
-export function buildPots(players: readonly PotParticipant[]): Pot[] {
+export function buildPotsWithRefunds(players: readonly PotParticipant[]): PotBuildResult {
   validateParticipants(players);
   const ordered = [...players].sort((left, right) => left.seat - right.seat);
   const levels = [...new Set(ordered.map((player) => player.contribution).filter((amount) => amount > 0))].sort((left, right) => left - right);
+  const refunds: PotRefund[] = [];
+  // The highest unmatched contribution is an uncalled bet, not a side pot.
+  // Remove one-person top layers until the highest remaining layer has at
+  // least two contributors. Folded players still count as contributors here.
+  while (levels.length > 0) {
+    const from = levels.length > 1 ? levels[levels.length - 2] : 0;
+    const to = levels[levels.length - 1];
+    const contributors = ordered.filter((player) => player.contribution >= to);
+    if (contributors.length !== 1) break;
+    const amount = to - from;
+    if (amount > 0) refunds.push({ playerId: contributors[0].id, amount });
+    levels.pop();
+  }
   const pots: Pot[] = [];
   let fromContribution = 0;
   for (const toContribution of levels) {
@@ -49,5 +67,9 @@ export function buildPots(players: readonly PotParticipant[]): Pot[] {
     }
     fromContribution = toContribution;
   }
-  return pots;
+  return { pots, refunds };
+}
+
+export function buildPots(players: readonly PotParticipant[]): Pot[] {
+  return buildPotsWithRefunds(players).pots;
 }

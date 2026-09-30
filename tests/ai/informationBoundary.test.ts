@@ -4,6 +4,22 @@ import { createTable, startHand } from '../../src/game/gameEngine';
 import { toPublicContext } from '../../src/ai/publicContext';
 
 describe('AI information boundary', () => {
+  it.each([
+    [2, ['HEADS_UP', 'HEADS_UP']],
+    [3, ['LATE', 'BLINDS', 'BLINDS']],
+    [6, ['LATE', 'BLINDS', 'BLINDS', 'EARLY', 'MIDDLE', 'LATE']],
+    [9, ['LATE', 'BLINDS', 'BLINDS', 'EARLY', 'MIDDLE', 'MIDDLE', 'MIDDLE', 'LATE', 'LATE']],
+  ] as const)('keeps fixed positions for a %s-player table', (tableSize, expected) => {
+    const table = createTable({
+      mode: 'STANDARD', tableSize, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      players: Array.from({ length: tableSize }, (_, seat) => ({ id: `p${seat}`, seat, stack: 100 })),
+    });
+    const state = startHand(table, createDeck('STANDARD'));
+    expect(state.players.map((player) => toPublicContext(state, player.id).position)).toEqual(expected);
+    const folded = { ...state, players: state.players.map((player) => player.seat === Math.min(3, tableSize - 1) ? { ...player, folded: true, status: 'FOLDED' as const } : player) };
+    expect(folded.players.map((player) => toPublicContext(folded, player.id).position)).toEqual(expected);
+  });
+
   it('exposes only the AI hole cards and visible table state', () => {
     const table = createTable({
       mode: 'STANDARD',

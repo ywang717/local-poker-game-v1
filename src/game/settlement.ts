@@ -1,6 +1,6 @@
 import { compareEvaluations, type HandEvaluation } from './handEvaluator';
 import type { GameMode } from './rules';
-import type { Pot, PotAward, SettledPot } from './pot';
+import type { Pot, PotAward, PotRefund, SettledPot } from './pot';
 
 export type SettlementPlayer = {
   id: string;
@@ -13,6 +13,8 @@ export type SettlementResult = {
   awards: PotAward[];
   totalPot: number;
   totalAwarded: number;
+  refunds: PotRefund[];
+  totalRefunded: number;
 };
 
 type EvaluationLookup = Readonly<Record<string, HandEvaluation>> | ReadonlyMap<string, HandEvaluation>;
@@ -98,6 +100,7 @@ export function settlePots(
   evaluations: EvaluationLookup,
   dealerSeat: number,
   mode: GameMode = 'STANDARD',
+  refunds: readonly PotRefund[] = [],
 ): SettlementResult {
   validatePlayers(players);
   if (!Number.isSafeInteger(dealerSeat) || dealerSeat < 0) throw new Error('Dealer seat must be a non-negative integer');
@@ -119,7 +122,13 @@ export function settlePots(
   const totalPot = settledPots.reduce((sum, pot) => sum + pot.amount, 0);
   const totalAwarded = awards.reduce((sum, award) => sum + award.amount, 0);
   assertChipConservation(totalPot, totalAwarded);
-  return { pots: settledPots, awards, totalPot, totalAwarded };
+  const normalizedRefunds = refunds.map((refund) => ({ ...refund }));
+  const totalRefunded = normalizedRefunds.reduce((sum, refund) => {
+    if (!Number.isSafeInteger(refund.amount) || refund.amount < 0) throw new Error('Refund amount must be a non-negative integer');
+    if (!playersById.has(refund.playerId)) throw new Error(`Unknown refund player ${refund.playerId}`);
+    return sum + refund.amount;
+  }, 0);
+  return { pots: settledPots, awards, totalPot, totalAwarded, refunds: normalizedRefunds, totalRefunded };
 }
 
 type ChipTotal = number | readonly number[];

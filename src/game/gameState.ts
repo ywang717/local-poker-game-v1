@@ -1,5 +1,6 @@
 import type { Card } from './cards';
 import type { GameMode } from './rules';
+import type { PotRefund } from './pot';
 
 export const SUPPORTED_TABLE_SIZES = [2, 3, 4, 5, 6, 8, 9] as const;
 export type TableSize = (typeof SUPPORTED_TABLE_SIZES)[number];
@@ -87,6 +88,8 @@ export type GameState = {
   currentBet: number;
   lastFullRaise: number;
   pots: PotState[];
+  /** Uncalled bet amounts returned at settlement. Optional for old snapshots. */
+  refunds?: PotRefund[];
   actionHistory: ActionRecord[];
 };
 

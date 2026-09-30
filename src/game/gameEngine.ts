@@ -62,6 +62,7 @@ export function createTable(config: TableConfig): GameState {
     currentBet: 0,
     lastFullRaise: config.bigBlind,
     pots: [],
+    refunds: [],
     actionHistory: [],
   };
 }
@@ -103,6 +104,7 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
     smallBlindSeat: null,
     bigBlindSeat: null,
     pots: [],
+    refunds: [],
     actionHistory: [],
     players: state.players.map((player) => ({
       ...player,
@@ -129,7 +131,9 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
   for (let round = 0; round < 2; round += 1) {
     for (const player of dealOrder) player.holeCards.push(next.deck[next.deckIndex++]);
   }
-  next.currentBet = Math.max(...next.players.map((player) => player.streetContribution));
+  // The pre-flop bring-in is the full big blind even when the BB is short
+  // stacked and can only post part of it.
+  next.currentBet = next.bigBlind;
   next.actingSeat = getActionOrder(next.tableSize, next.dealerSeat, 'PRE_FLOP')
     .map((seat) => next.players.find((player) => player.seat === seat))
     .find((player): player is GameState['players'][number] => Boolean(player && !player.folded && !player.allIn))?.seat ?? null;

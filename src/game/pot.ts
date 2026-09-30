@@ -11,6 +11,11 @@ export type PotAward = {
   amount: number;
 };
 
+export type PotRefund = {
+  playerId: string;
+  amount: number;
+};
+
 export type SettledPot = Pot & {
   winnerPlayerIds: string[];
   awards: PotAward[];

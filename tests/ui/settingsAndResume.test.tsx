@@ -51,7 +51,7 @@ describe('pause, leave, settings and resume flows', () => {
     expect(useGameStore.getState().game).toBeNull();
   });
 
-  it('folds a human turn and resumes a paused hand when leaving the table', () => {
+  it('keeps the human hand active after requesting to leave while paused', () => {
     const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
     const state = startHand(table, createDeck('STANDARD'));
     useGameStore.setState({ game: state, paused: true, leaveRequested: false });
@@ -59,7 +59,23 @@ describe('pause, leave, settings and resume flows', () => {
     expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
     expect(useGameStore.getState().paused).toBe(false);
     expect(useGameStore.getState().leaveRequested).toBe(true);
-    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(true);
+    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(false);
+    expect(useGameStore.getState().game?.actingSeat).toBe(0);
+  });
+
+  it('still accepts a human call or raise after requesting to leave', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    const started = startHand(table, createDeck('STANDARD'));
+    useGameStore.getState().setGame(started);
+    useGameStore.getState().requestLeave();
+    expect(useGameStore.getState().dispatchAction('human', { kind: 'call' })).toBe(true);
+    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(false);
+
+    const raiseState = startHand(table, createDeck('STANDARD'));
+    useGameStore.setState({ game: raiseState, paused: false, leaveRequested: false });
+    useGameStore.getState().requestLeave();
+    expect(useGameStore.getState().dispatchAction('human', { kind: 'raise-to', amount: 20 })).toBe(true);
+    expect(useGameStore.getState().game?.actionHistory.at(-1)?.action).toBe('raise-to');
   });
 
   it('can leave when the human is facing a check-only post-flop decision', () => {
@@ -73,10 +89,10 @@ describe('pause, leave, settings and resume flows', () => {
     expect(state.currentBet).toBe(0);
     expect(state.actingSeat).toBe(0);
     expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
-    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(true);
+    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(false);
   });
 
-  it('auto-folds when a pending leave reaches the human after AI actions', () => {
+  it('does not auto-fold when a pending leave reaches the human after AI actions', () => {
     const players = Array.from({ length: 6 }, (_, seat) => ({ id: seat === 0 ? 'human' : `ai-${seat}`, seat, stack: 100, isHuman: seat === 0 }));
     const table = createTable({ mode: 'STANDARD', tableSize: 6, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players });
     const state = startHand(table, createDeck('STANDARD'));
@@ -93,7 +109,7 @@ describe('pause, leave, settings and resume flows', () => {
       current = useGameStore.getState().game!;
     }
 
-    expect(current.players.find((player) => player.id === 'human')?.folded).toBe(true);
+    expect(current.players.find((player) => player.id === 'human')?.folded).toBe(false);
   });
 
   it('finishes the table exit when a pending leave reaches settlement', () => {

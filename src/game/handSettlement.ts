@@ -1,4 +1,4 @@
-import { buildPots } from './sidePot';
+import { buildPotsWithRefunds } from './sidePot';
 import { evaluateHand, type HandEvaluation } from './handEvaluator';
 import { settlePots, type SettlementResult } from './settlement';
 import type { GameState, PotState } from './gameState';
@@ -17,6 +17,7 @@ function cloneState(state: GameState): GameState {
     communityCards: [...state.communityCards],
     players: state.players.map((player) => ({ ...player, holeCards: [...player.holeCards] })),
     pots: state.pots.map((pot) => ({ ...pot, eligiblePlayerIds: [...pot.eligiblePlayerIds], winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
+    refunds: (state.refunds ?? []).map((refund) => ({ ...refund })),
     actionHistory: [...state.actionHistory],
   };
 }
@@ -48,6 +49,8 @@ export function settleGameState(state: GameState): HandSettlement {
       awards: state.pots.flatMap((pot) => pot.awards.map((award) => ({ ...award }))),
       totalPot: state.pots.reduce((sum, pot) => sum + pot.amount, 0),
       totalAwarded: state.pots.reduce((sum, pot) => sum + pot.awards.reduce((potSum, award) => potSum + award.amount, 0), 0),
+      refunds: (state.refunds ?? []).map((refund) => ({ ...refund })),
+      totalRefunded: (state.refunds ?? []).reduce((sum, refund) => sum + refund.amount, 0),
     };
     return { state: cloneState(state), result, evaluations: {} };
   }
@@ -58,7 +61,7 @@ export function settleGameState(state: GameState): HandSettlement {
     contribution: player.handContribution,
     folded: player.folded,
   }));
-  const pots = buildPots(participants);
+  const { pots, refunds } = buildPotsWithRefunds(participants);
   const evaluations: Record<string, HandEvaluation> = {};
   if (state.communityCards.length >= 5) {
     for (const player of state.players) {
@@ -71,9 +74,11 @@ export function settleGameState(state: GameState): HandSettlement {
     evaluations,
     state.dealerSeat,
     state.mode,
+    refunds,
   );
   const awardsByPlayer = new Map<string, number>();
   for (const award of result.awards) awardsByPlayer.set(award.playerId, (awardsByPlayer.get(award.playerId) ?? 0) + award.amount);
+  for (const refund of result.refunds) awardsByPlayer.set(refund.playerId, (awardsByPlayer.get(refund.playerId) ?? 0) + refund.amount);
   const next = cloneState(state);
   next.players = next.players.map((player) => ({
     ...player,
@@ -81,6 +86,7 @@ export function settleGameState(state: GameState): HandSettlement {
     status: player.folded ? 'FOLDED' : player.allIn ? 'ALL_IN' : 'ACTIVE',
   }));
   next.pots = result.pots.map(potState);
+  next.refunds = result.refunds.map((refund) => ({ ...refund }));
   next.street = 'SETTLEMENT';
   next.actingSeat = null;
   next.currentBet = 0;

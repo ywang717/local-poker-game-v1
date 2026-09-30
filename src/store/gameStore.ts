@@ -43,16 +43,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game || get().paused) return false;
     const result = applyBettingAction(game, { playerId, action });
     if (!result.ok) return false;
-    let nextState = result.state;
-    if (get().leaveRequested && nextState.street !== 'SHOWDOWN' && nextState.street !== 'SETTLEMENT') {
-      const actor = nextState.actingSeat === null ? undefined : nextState.players.find((player) => player.seat === nextState.actingSeat);
-      if (actor?.isHuman) {
-        const folded = applyBettingAction(nextState, { playerId: actor.id, action: { kind: 'fold' } });
-        if (folded.ok) nextState = folded.state;
-      }
-    }
-    set({ game: nextState });
-    persistGame(nextState);
+    set({ game: result.state });
+    persistGame(result.state);
     return true;
   },
   togglePause: () => set((state) => ({ paused: !state.paused })),
@@ -62,15 +54,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ game: null, paused: false, leaveRequested: false });
       persistGame(null);
       return 'IMMEDIATE';
-    }
-    const actor = game.actingSeat === null ? undefined : game.players.find((player) => player.seat === game.actingSeat);
-    if (actor?.isHuman) {
-      const result = applyBettingAction(game, { playerId: actor.id, action: { kind: 'fold' } });
-      if (result.ok) {
-        set({ game: result.state, paused: false, leaveRequested: true });
-        persistGame(result.state);
-        return 'AFTER_HAND';
-      }
     }
     set({ paused: false, leaveRequested: true });
     return 'AFTER_HAND';

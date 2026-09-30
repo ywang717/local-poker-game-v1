@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateHand, type HandEvaluation } from '../../src/game/handEvaluator';
-import { buildPots, type PotParticipant } from '../../src/game/sidePot';
+import { buildPots, buildPotsWithRefunds, type PotParticipant } from '../../src/game/sidePot';
 import { assertChipConservation, settlePots, type SettlementPlayer } from '../../src/game/settlement';
 import { c } from './cards.test';
 
@@ -25,29 +25,32 @@ describe('pot settlement', () => {
       { a: evaluation('ONE_PAIR', [14, 13, 9, 7]), b: evaluation('HIGH_CARD', [14, 13, 9, 7, 2]) },
       0,
     );
-    expect(result.awards).toEqual([{ playerId: 'a', amount: 200 }, { playerId: 'b', amount: 150 }]);
-    expect(result.pots.map((pot) => pot.winnerPlayerIds)).toEqual([['a'], ['b']]);
-    expect(result.totalPot).toBe(350);
-    expect(result.totalAwarded).toBe(350);
+    expect(result.awards).toEqual([{ playerId: 'a', amount: 200 }]);
+    expect(result.pots.map((pot) => pot.winnerPlayerIds)).toEqual([['a']]);
+    expect(result.refunds).toEqual([]);
+    expect(result.totalPot).toBe(200);
+    expect(result.totalAwarded).toBe(200);
   });
 
   it('allows a different winner in each side pot', () => {
-    const pots = buildPots([
+    const potBuild = buildPotsWithRefunds([
       contribution('a', 0, 1_000),
       contribution('b', 1, 5_000),
       contribution('c', 2, 10_000),
     ]);
     const result = settlePots(
-      pots,
+      potBuild.pots,
       [player('a', 0), player('b', 1), player('c', 2)],
       { a: evaluation('ONE_PAIR', [14, 13, 9, 7]), b: evaluation('TWO_PAIR', [12, 11, 9]), c: evaluation('THREE_OF_A_KIND', [8, 14, 13]) },
       0,
+      'STANDARD',
+      potBuild.refunds,
     );
     expect(result.awards).toEqual([
       { playerId: 'c', amount: 3_000 },
       { playerId: 'c', amount: 8_000 },
-      { playerId: 'c', amount: 5_000 },
     ]);
+    expect(result.refunds).toEqual([{ playerId: 'c', amount: 5_000 }]);
   });
 
   it('excludes folded players from winners while retaining their contribution', () => {

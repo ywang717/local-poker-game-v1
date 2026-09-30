@@ -33,7 +33,10 @@ npm run dev
 npm run build
 npm test
 npm run typecheck
+npm run test:simulation
 ```
+
+`npm run test:simulation` 会运行标准德州与短牌在 2、3、4、5、6、8、9 人桌上的连续牌局压力测试，共 14,000 手，并检查弃牌、下注、All-in、边池、退款和筹码守恒。
 
 当前版本支持 Windows、macOS、iPhone 和 Android 的现代浏览器；Tauri/Electron 外壳不属于本版本发布门槛。
 

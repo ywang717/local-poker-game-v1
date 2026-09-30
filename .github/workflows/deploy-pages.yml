@@ -27,6 +27,12 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and integration tests
+        run: npm test
+      - name: Continuous simulation release gate
+        run: npm run test:simulation
       - name: Build
         run: npm run build
       - name: Configure Pages
