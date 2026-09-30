@@ -43,6 +43,9 @@ describe('AI information boundary', () => {
     expect(context).not.toHaveProperty('deck');
     expect(context).not.toHaveProperty('burnCards');
     expect(context).not.toHaveProperty('handResult');
+    expect(context).not.toHaveProperty('initialOccupiedSeats');
+    expect(context).not.toHaveProperty('deckIndex');
+    expect(context.detailedPosition).toBe('BTN');
     expect(JSON.stringify(context)).not.toContain(hiddenOpponentCard);
     expect(JSON.stringify(context)).not.toContain(futureCard);
   });

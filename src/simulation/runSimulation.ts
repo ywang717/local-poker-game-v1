@@ -7,13 +7,20 @@ import { nextDealerSeat } from '../game/dealer';
 import { settleGameState } from '../game/handSettlement';
 import type { GameState, TableSize } from '../game/gameState';
 import type { GameMode } from '../game/rules';
+import type { AIDifficulty } from '../ai/difficulty';
+import type { PublicTableContext } from '../ai/publicContext';
+import type { PlayerAction } from '../game/gameState';
 
 const STARTING_STACK = 1_000;
 const SMALL_BLIND = 5;
 const BIG_BLIND = 10;
 const MAX_ACTIONS_PER_HAND = 1_000;
 
-export type SimulationOptions = { mode: GameMode; hands: number; seed: number; tableSize: TableSize };
+export type SimulationOptions = {
+  mode: GameMode; hands: number; seed: number; tableSize: TableSize;
+  difficulty?: AIDifficulty;
+  onAction?: (context: PublicTableContext, action: PlayerAction) => void;
+};
 
 export type SimulationReport = {
   mode: GameMode; tableSize: TableSize; handsRequested: number; handsCompleted: number;
@@ -86,7 +93,8 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
       const actor = state.players.find((player) => player.seat === state.actingSeat);
       if (!actor) { report.illegalActions += 1; throw new Error(`Missing acting player at ${state.handId}`); }
       const context = toPublicContext(state, actor.id);
-      const action = chooseAction(context, 3, PERSONALITIES.BALANCED, rng);
+      const action = chooseAction(context, options.difficulty ?? 3, PERSONALITIES.BALANCED, rng);
+      options.onAction?.(context, action);
       const transition = applyAction(state, { playerId: actor.id, action });
       if (!transition.ok) { report.illegalActions += 1; throw new Error(`Illegal action at ${state.handId}: ${transition.error.message}`); }
       state = transition.state;

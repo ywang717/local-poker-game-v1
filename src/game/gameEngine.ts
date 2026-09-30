@@ -62,6 +62,7 @@ export function createTable(config: TableConfig): GameState {
     smallBlind: config.smallBlind,
     bigBlind: config.bigBlind,
     dealerSeat,
+    initialOccupiedSeats: players.map((player) => player.seat),
     smallBlindSeat: null,
     bigBlindSeat: null,
     street: 'PRE_FLOP',
@@ -129,6 +130,7 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
       status: player.stack <= 0 ? 'WAITING' : 'ACTIVE',
     })),
   };
+  next.initialOccupiedSeats = [...(state.initialOccupiedSeats ?? state.players.map((player) => player.seat))];
   const activePlayers = next.players.filter((player) => player.stack > 0);
   if (activePlayers.length < 2) throw new Error('At least two players with chips are required');
   const seats = blindSeats(next.tableSize, next.dealerSeat);

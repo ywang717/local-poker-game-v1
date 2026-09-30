@@ -72,6 +72,9 @@ export type ActionRecord = {
   action: PlayerAction['kind'];
   amount: number;
   totalTo: number;
+  /** Optional metadata used by public AI observers; old records omit it. */
+  isBlind?: boolean;
+  isFullRaise?: boolean;
 };
 
 export type GameState = {
@@ -87,6 +90,8 @@ export type GameState = {
   smallBlind: number;
   bigBlind: number;
   dealerSeat: number;
+  /** Occupied seats when the hand began; folds and later seat filtering never alter this ring. */
+  initialOccupiedSeats?: number[];
   smallBlindSeat: number | null;
   bigBlindSeat: number | null;
   street: Street;
