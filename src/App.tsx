@@ -211,7 +211,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   if (view === 'HOME') content = <HomePage career={career} loadError={loadError} onContinue={() => setView(career ? 'CAREER' : 'HOME')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
   else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onNavigate={(next) => setView(next)} />;
   else if (view === 'TABLE_SELECT' && career) content = <TableSelectPage career={career} onEnter={enterTable} />;
-  else if (view === 'GAME' && game) content = <GamePage game={game} opponentModels={opponentModels} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack)} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+  else if (view === 'GAME' && game) content = <GamePage game={game} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack)} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
   else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
   else if (view === 'SETTINGS') content = <SettingsPage />;
