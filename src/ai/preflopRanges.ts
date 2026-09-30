@@ -16,6 +16,12 @@ export type PreflopProfile = {
   highCardBonus: number;
 };
 
+export type PreflopDecisionContext = {
+  tableSize: number;
+  position: Position;
+  difficulty: AIDifficulty;
+};
+
 const positionAdjustment: Readonly<Record<Position, number>> = {
   HEADS_UP: -0.12,
   EARLY: 0.1,
@@ -45,15 +51,20 @@ export function getPreflopProfile(
   };
 }
 
-export function preflopStrength(holeCards: readonly Card[], mode: GameMode): number {
+export function preflopStrength(
+  holeCards: readonly Card[],
+  mode: GameMode,
+  context: PreflopDecisionContext = { tableSize: 6, position: 'MIDDLE', difficulty: 3 },
+): number {
   if (holeCards.length !== 2) throw new RangeError('Pre-flop strength requires two hole cards');
   const [high, low] = [...holeCards].sort((left, right) => right.rank - left.rank).map((card) => card.rank);
-  const config = getPreflopProfile(mode, 6, 'MIDDLE', 3);
+  const config = getPreflopProfile(mode, context.tableSize, context.position, context.difficulty);
   let strength = 0.22 + ((high - 6) / 8) * 0.27 + ((low - 6) / 8) * 0.12;
   if (high === low) strength = 0.53 + ((high - 6) / 8) * 0.32 + config.pairBonus;
   if (holeCards[0].suit === holeCards[1].suit) strength += config.suitedBonus;
   if (Math.abs(high - low) <= 2) strength += config.connectedBonus;
   if (high >= 12) strength += config.highCardBonus;
   if (high === 14 && low >= 10) strength += 0.09;
+  strength += (0.62 - config.openThreshold) * 0.25;
   return Math.max(0, Math.min(1, strength));
 }

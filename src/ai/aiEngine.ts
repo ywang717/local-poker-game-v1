@@ -5,6 +5,7 @@ import { postflopStrength } from './postflop';
 import { preflopStrength } from './preflopRanges';
 import type { PublicTableContext } from './publicContext';
 import { modelRates } from './playerModel';
+import { calculatePotOdds, calculateSpr, selectBetFraction, type BettingIntent } from './decisionFeatures';
 
 export type RandomSource = () => number;
 export type PersonalityChoice = PersonalityId | AIPersonality;
@@ -18,14 +19,20 @@ function legal(context: PublicTableContext, kind: LegalAction['kind']): LegalAct
   return context.legalActions.find((action) => action.kind === kind);
 }
 
-function aggressiveAction(context: PublicTableContext, rng: RandomSource): PlayerAction | undefined {
+function aggressiveAction(context: PublicTableContext, rng: RandomSource, intent: BettingIntent): PlayerAction | undefined {
   const raise = legal(context, 'raise-to') ?? legal(context, 'bet-to');
   if (raise && 'minAmount' in raise) {
-    const spread = raise.maxAmount - raise.minAmount;
-    const target = raise.minAmount + Math.floor(spread * (0.25 + random(rng) * 0.5));
+    const spr = calculateSpr(context.self.stack, context.potAmount);
+    const postflopStreet = context.street === 'FLOP' || context.street === 'TURN' || context.street === 'RIVER' ? context.street : 'FLOP';
+    const fraction = context.street === 'PRE_FLOP'
+      ? 0.5
+      : selectBetFraction({ street: postflopStreet, strength: 0, drawPotential: 0, spr, intent });
+    const jitter = (random(rng) - 0.5) * 0.12;
+    const target = context.currentBet + Math.round(Math.max(1, context.potAmount) * Math.max(0.25, fraction + jitter));
     return { kind: raise.kind, amount: Math.max(raise.minAmount, Math.min(raise.maxAmount, target)) };
   }
-  return legal(context, 'all-in') ? { kind: 'all-in' } : undefined;
+  const spr = calculateSpr(context.self.stack, context.potAmount);
+  return intent === 'VALUE' && spr <= 1.25 && legal(context, 'all-in') ? { kind: 'all-in' } : undefined;
 }
 
 function fallback(context: PublicTableContext): PlayerAction {
@@ -51,31 +58,49 @@ export function chooseAction(
   const profile = getDifficultyProfile(difficulty);
   const character = getPersonality(personality);
   const strengthResult = context.street === 'PRE_FLOP'
-    ? { strength: preflopStrength(context.self.holeCards, context.mode), drawPotential: 0 }
+    ? { strength: preflopStrength(context.self.holeCards, context.mode, { tableSize: context.tableSize, position: context.position, difficulty }), drawPotential: 0 }
     : postflopStrength(context.self.holeCards, context.communityCards, context.mode);
   const modelAdjustment = profile.modelWeight * (averageOpponentFold(context) - 0.25);
   const positionAdjustment = context.position === 'LATE' || context.position === 'HEADS_UP' ? profile.positionWeight : context.position === 'EARLY' ? -profile.positionWeight : 0;
-  const potOdds = context.toCall > 0 ? context.toCall / Math.max(1, context.potAmount + context.toCall) : 0;
+  const potOdds = calculatePotOdds(context.toCall, context.potAmount);
+  const spr = calculateSpr(context.self.stack, context.potAmount);
   const adjustedStrength = Math.max(0, Math.min(1, strengthResult.strength + strengthResult.drawPotential * profile.quality + modelAdjustment + positionAdjustment + character.looseness * 0.35));
   const bluffChance = Math.max(0, profile.bluffFrequency + character.bluffFrequency + (context.position === 'LATE' ? 0.04 : 0));
   const roll = random(rng);
 
+  if (context.street === 'PRE_FLOP' && legal(context, 'raise-to') && adjustedStrength >= profile.callThreshold - 0.18 && roll < profile.aggression * 0.35) {
+    const pressure = aggressiveAction(context, rng, 'BLUFF');
+    if (pressure) return pressure;
+  }
+
   if (adjustedStrength >= profile.valueThreshold || (adjustedStrength >= profile.callThreshold && roll < profile.aggression + character.aggression)) {
-    const aggressive = aggressiveAction(context, rng);
+    const aggressive = aggressiveAction(context, rng, 'VALUE');
     if (aggressive) return aggressive;
     if (legal(context, 'call')) return { kind: 'call' };
     if (legal(context, 'check')) return { kind: 'check' };
   }
 
-  if (context.toCall > 0 && adjustedStrength < profile.foldThreshold + potOdds * 0.75 && roll > bluffChance) {
+  const pressureChance = profile.aggression * (context.position === 'EARLY' ? 0.12 : 0.28);
+  if (legal(context, 'raise-to') && adjustedStrength >= profile.callThreshold - 0.12 && roll < pressureChance) {
+    const pressure = aggressiveAction(context, rng, 'BLUFF');
+    if (pressure) return pressure;
+  }
+
+  if (context.toCall > 0 && adjustedStrength + strengthResult.drawPotential * 0.35 < Math.max(profile.foldThreshold, potOdds) && roll > bluffChance) {
     if (legal(context, 'fold')) return { kind: 'fold' };
     if (legal(context, 'check')) return { kind: 'check' };
   }
 
-  if (roll < bluffChance + profile.aggression * 0.12) {
-    const bluff = aggressiveAction(context, rng);
+  const canSemiBluff = strengthResult.drawPotential >= 0.16 && adjustedStrength < profile.valueThreshold;
+  if (canSemiBluff && roll < profile.aggression * 0.75) {
+    const semiBluff = aggressiveAction(context, rng, 'SEMI_BLUFF');
+    if (semiBluff) return semiBluff;
+  }
+  if (roll < bluffChance + profile.aggression * 0.12 && (context.position === 'LATE' || spr <= 2.5)) {
+    const bluff = aggressiveAction(context, rng, 'BLUFF');
     if (bluff) return bluff;
   }
-  if (legal(context, 'call') && (adjustedStrength >= profile.callThreshold - character.callBias || potOdds <= 0.2)) return { kind: 'call' };
+  const drawCall = strengthResult.drawPotential >= Math.max(0.12, potOdds * 0.9);
+  if (legal(context, 'call') && (adjustedStrength + character.callBias >= Math.max(profile.callThreshold - 0.1, potOdds) || drawCall || potOdds <= 0.08)) return { kind: 'call' };
   return fallback(context);
 }

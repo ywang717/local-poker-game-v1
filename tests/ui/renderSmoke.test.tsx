@@ -48,6 +48,32 @@ describe('Chinese white minimal UI', () => {
     expect(html).toMatch(/disabled="">加注/);
   });
 
+  it('makes the latest AI action visible on its seat', () => {
+    const table = createTable({
+      mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      players: [{ id: 'human', name: '玩家', seat: 0, stack: 100, isHuman: true }, { id: 'ai', name: '凯文', seat: 1, stack: 100 }],
+    });
+    const state = {
+      ...startHand(table, createDeck('STANDARD')),
+      actionHistory: [{ playerId: 'ai', street: 'PRE_FLOP' as const, action: 'raise-to' as const, amount: 30, totalTo: 40 }],
+    };
+    const html = renderToStaticMarkup(<PokerTable game={state} />);
+    expect(html).toContain('action-badge--raise');
+    expect(html).toContain('action-badge__icon');
+    expect(html).toContain('加注');
+    expect(html).toContain('+30');
+  });
+
+  it('labels the active AI seat as thinking while its timer is running', () => {
+    const table = createTable({
+      mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      players: [{ id: 'human', name: '玩家', seat: 0, stack: 100, isHuman: true }, { id: 'ai', name: '迈克', seat: 1, stack: 100 }],
+    });
+    const state = { ...startHand(table, createDeck('STANDARD')), actingSeat: 1 };
+    const html = renderToStaticMarkup(<PokerTable game={state} />);
+    expect(html).toContain('思考中');
+  });
+
   it('reveals eligible AI hole cards at showdown', () => {
     const table = createTable({
       mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0,

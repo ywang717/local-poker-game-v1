@@ -22,6 +22,7 @@ import { useCareerStore } from './store/careerStore';
 import { useGameStore } from './store/gameStore';
 import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
+import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
@@ -185,7 +186,8 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const currentCareer = ensureCareer();
     const buyInResult = buyIn(level);
     const human = { id: 'human', name: currentCareer.nickname, seat: 0, stack: buyInResult.tableStack, isHuman: true };
-    const players = Array.from({ length: tableSize }, (_, seat) => seat === 0 ? human : { id: `ai-${seat}`, name: `AI ${seat}`, seat, stack: buyInResult.level.buyIn });
+    const aiNames = selectAiNames(tableSize - 1);
+    const players = Array.from({ length: tableSize }, (_, seat) => seat === 0 ? human : { id: `ai-${seat}`, name: aiNames[seat - 1], seat, stack: buyInResult.level.buyIn });
     const table = createTable({ mode, tableSize, smallBlind: buyInResult.level.smallBlind, bigBlind: buyInResult.level.bigBlind, players, dealerSeat: 0 });
     setGame(startHand(table, shuffleDeck(createDeck(mode))));
     setView('GAME');
