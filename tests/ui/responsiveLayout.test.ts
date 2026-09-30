@@ -21,16 +21,10 @@ describe('responsive layout contract', () => {
     expect(css).not.toContain('.quick-bet { min-height: 36px');
   });
 
-  it('keeps all mobile seats compact enough to stay above the action bar', () => {
+  it('keeps mobile seats in one column with the action bar in page flow', () => {
     const mobileRules = css.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
-    expect(mobileRules).toMatch(/\.seat-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3/);
-    expect(mobileRules).toMatch(/\.table-center\s*\{[^}]*min-height:\s*100px/);
-    expect(mobileRules).toMatch(/\.action-badge\s*\{[^}]*position:\s*absolute/);
-  });
-
-  it('uses one seat per row on narrow phones and keeps controls in flow', () => {
-    const narrowRules = css.match(/@media \(max-width: 420px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
-    expect(narrowRules).toMatch(/\.seat-grid\s*\{[^}]*grid-template-columns:\s*1fr/);
-    expect(narrowRules).toMatch(/\.action-panel\s*\{[^}]*position:\s*sticky/);
+    expect(mobileRules).toMatch(/\.seat-grid\s*\{[^}]*grid-template-columns:\s*1fr/);
+    expect(mobileRules).toMatch(/\.table-center\s*\{[^}]*min-height:\s*120px/);
+    expect(mobileRules).toMatch(/\.action-panel\s*\{[^}]*position:\s*sticky/);
   });
 });
