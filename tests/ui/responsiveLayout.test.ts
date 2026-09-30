@@ -20,4 +20,10 @@ describe('responsive layout contract', () => {
     expect(css).toMatch(/\.quick-bet\s*\{[^}]*min-height:\s*44px/);
     expect(css).not.toContain('.quick-bet { min-height: 36px');
   });
+
+  it('keeps all mobile seats compact enough to stay above the action bar', () => {
+    const mobileRules = css.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    expect(mobileRules).toMatch(/\.seat-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3/);
+    expect(mobileRules).toMatch(/\.table-center\s*\{[^}]*min-height:\s*100px/);
+  });
 });
