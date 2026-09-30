@@ -111,12 +111,13 @@ describe('Chinese white minimal UI', () => {
     const hand: HandSummary = {
       handId: 'hand-review-1', timestamp: '2026-09-30T00:00:00.000Z', mode: 'STANDARD', tableLevel: 1, tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
       playerHoleCards: [], communityCards: [], finalCategory: '两对', finalPot: 120, playerContribution: 60, playerNet: 60, result: 'WIN',
-      actionHistory: [{ playerId: 'AI', street: 'RIVER', action: 'call', amount: 20, totalTo: 60 }], potResults: [{ amount: 120, winnerPlayerIds: ['玩家'], awards: [{ playerId: '玩家', amount: 120 }] }],
+      actionHistory: [{ playerId: 'AI', street: 'RIVER', action: 'call', amount: 20, totalTo: 60 }], playerNames: { AI: '安迪', 玩家: '玩家' }, potResults: [{ amount: 120, winnerPlayerIds: ['玩家'], awards: [{ playerId: '玩家', amount: 120 }] }],
     };
     const html = renderToStaticMarkup(<HandReview hand={hand} defaultExpanded collapsible />);
     expect(html).toContain('上一手回顾');
     expect(html).toContain('主池 120');
     expect(html).toContain('玩家');
+    expect(html).toContain('安迪');
     expect(html).toContain('行动时间线');
     expect(html).toContain('收起上一手');
   });

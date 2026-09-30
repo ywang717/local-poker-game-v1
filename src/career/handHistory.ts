@@ -28,6 +28,8 @@ export type HandSummary = {
   playerNet: number;
   result: HandResult;
   actionHistory: ActionRecord[];
+  /** Names captured at settlement so history remains readable after the table closes. */
+  playerNames?: Record<string, string>;
   potResults?: PotReview[];
   allIn?: boolean;
   allInWon?: boolean;
@@ -42,6 +44,7 @@ export function appendHandHistory(history: readonly HandSummary[], entry: HandSu
     playerHoleCards: [...entry.playerHoleCards],
     communityCards: [...entry.communityCards],
     actionHistory: entry.actionHistory.map((record) => ({ ...record })),
+    playerNames: entry.playerNames ? { ...entry.playerNames } : undefined,
     potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
   }, ...history].slice(0, HAND_HISTORY_LIMIT);
 }

@@ -97,6 +97,7 @@ export function handSummary(state: GameState): HandSummary | null {
     playerNet: playerAward + playerRefund - human.handContribution,
     result: human.folded ? 'FOLD' : playerAward === 0 ? 'LOSS' : hasSplitPot ? 'SPLIT' : 'WIN',
     actionHistory: state.actionHistory.map((record) => ({ ...record })),
+    playerNames: Object.fromEntries(state.players.map((player) => [player.id, player.name])),
     potResults: state.pots.map((pot) => ({ amount: pot.amount, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
     allIn: humanAllIn,
     allInWon: humanAllIn && playerAward > 0,
