@@ -29,4 +29,12 @@ describe('PWA release assets', () => {
     expect(workflow).toContain('npm ci');
     expect(workflow).toContain('npm run build');
   });
+
+  it('documents the public link and device-specific install steps', () => {
+    const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+    expect(readme).toContain('https://ywang717.github.io/local-poker-game-v1/');
+    expect(readme).toContain('iPhone Safari');
+    expect(readme).toContain('Android Chrome');
+    expect(readme).toContain('各设备独立');
+  });
 });

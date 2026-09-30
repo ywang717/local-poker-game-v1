@@ -4,6 +4,20 @@
 
 ## 开始使用
 
+### 朋友直接游玩
+
+公开网页地址：
+
+<https://ywang717.github.io/local-poker-game-v1/>
+
+朋友打开链接即可在电脑或手机上创建自己的本地生涯。首次打开需要联网下载页面；页面缓存完成后，游戏逻辑和存档都可以离线运行。
+
+- 电脑：使用 Chrome、Edge 或 Safari 打开链接，也可以通过浏览器地址栏的安装按钮添加到桌面。
+- iPhone Safari：打开链接，点击“分享”→“添加到主屏幕”。
+- Android Chrome：打开链接，选择“安装应用”或“添加到主屏幕”。
+- 手机和电脑各设备独立保存生涯，不会自动同步；清理浏览器网站数据会删除该设备的本地存档。
+- 当前版本是单人 AI 游戏，不支持朋友之间联机同桌。
+
 在仓库根目录执行：
 
 ```bash
@@ -19,7 +33,7 @@ npm test
 npm run typecheck
 ```
 
-当前 V1.0 的核心引擎可在 Windows 和 macOS 的现代浏览器中运行；Tauri/Electron 外壳不属于本版本发布门槛。
+当前版本支持 Windows、macOS、iPhone 和 Android 的现代浏览器；Tauri/Electron 外壳不属于本版本发布门槛。
 
 ## 功能范围
 
