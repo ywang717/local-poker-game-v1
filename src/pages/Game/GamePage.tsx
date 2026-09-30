@@ -7,8 +7,10 @@ import { useSettingsStore } from '../../store/settingsStore';
 import type { PlayerModel } from '../../ai/playerModel';
 import { ActionPanel } from '../../components/ActionPanel/ActionPanel';
 import { PokerTable } from '../../components/PokerTable/PokerTable';
+import { HandReview } from '../../components/HandReview/HandReview';
+import type { HandSummary } from '../../career/handHistory';
 
-export function GamePage({ game, onAction, onPause, onLeave, onContinue, canContinue, paused, leaveRequested, opponentModels = {} }: { game: GameState; onAction: (playerId: string, action: PlayerAction) => void; onPause: () => void; onLeave: () => void; onContinue: () => void; canContinue: boolean; paused: boolean; leaveRequested: boolean; opponentModels?: Readonly<Record<string, PlayerModel>> }) {
+export function GamePage({ game, onAction, onPause, onLeave, onContinue, canContinue, previousHand, paused, leaveRequested, opponentModels = {} }: { game: GameState; onAction: (playerId: string, action: PlayerAction) => void; onPause: () => void; onLeave: () => void; onContinue: () => void; canContinue: boolean; previousHand: HandSummary | null; paused: boolean; leaveRequested: boolean; opponentModels?: Readonly<Record<string, PlayerModel>> }) {
   const human = game.players.find((player) => player.isHuman) ?? game.players[0];
   const aiSpeed = useSettingsStore((state) => state.aiSpeed);
   const aiTimer = useRef<PausableTimer | null>(null);
@@ -40,5 +42,5 @@ export function GamePage({ game, onAction, onPause, onLeave, onContinue, canCont
     else aiTimer.current.resume();
   }, [paused]);
 
-  return <section className="game-page"><div className="game-toolbar"><span>本地牌桌</span><div>{game.street !== 'SETTLEMENT' && <button className="link-button" onClick={onPause}>{paused ? '继续' : '暂停'}</button>}<button className="link-button" onClick={onLeave}>{leaveRequested ? '本手结束后离开' : '离开牌桌'}</button></div></div><PokerTable game={game} />{game.street === 'SETTLEMENT' ? <section className="settlement-controls" aria-label="结算操作"><strong>本手已结算</strong><span>请选择继续下一手或离开牌桌</span><div><button className="button button--primary" disabled={!canContinue} onClick={onContinue}>继续下一手</button><button className="button button--secondary" onClick={onLeave}>离开牌桌</button></div></section> : paused ? <div className="paused-banner">已暂停</div> : <ActionPanel game={game} playerId={human.id} onAction={(action) => onAction(human.id, action)} />}</section>;
+  return <section className="game-page"><div className="game-toolbar"><span>本地牌桌</span><div>{game.street !== 'SETTLEMENT' && <button className="link-button" onClick={onPause}>{paused ? '继续' : '暂停'}</button>}<button className="link-button" onClick={onLeave}>{leaveRequested ? '本手结束后离开' : '离开牌桌'}</button></div></div><PokerTable game={game} />{game.street === 'SETTLEMENT' ? <section className="settlement-controls" aria-label="结算操作"><strong>本手已结算</strong><span>请选择继续下一手或离开牌桌</span><div><button className="button button--primary" disabled={!canContinue} onClick={onContinue}>继续下一手</button><button className="button button--secondary" onClick={onLeave}>离开牌桌</button></div></section> : paused ? <div className="paused-banner">已暂停</div> : <ActionPanel game={game} playerId={human.id} onAction={(action) => onAction(human.id, action)} />}{previousHand && <HandReview key={`${previousHand.handId}-${game.street}`} hand={previousHand} defaultExpanded={game.street === 'SETTLEMENT'} />}</section>;
 }

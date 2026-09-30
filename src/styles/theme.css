@@ -64,6 +64,18 @@ h3 { margin-bottom: 14px; font-size: 15px; }
 .seat-badges { display: flex; gap: 4px; color: #246BCE; font-size: 11px; }
 .hole-cards { grid-column: 1 / -1; display: flex; gap: 4px; }
 .table-center { min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.settlement-controls { max-width: 640px; display: grid; gap: 8px; margin: 18px auto 0; padding: 16px; border: 1px solid #E5E5E5; border-radius: 12px; background: #FAFAFA; text-align: center; }
+.settlement-controls > span { color: #666666; font-size: 13px; }
+.settlement-controls > div { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.hand-review { max-width: 1200px; margin: 18px auto 0; padding: 16px; border: 1px solid #E5E5E5; border-radius: 12px; background: #FFFFFF; }
+.hand-review-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hand-review-header .eyebrow { margin-bottom: 4px; }
+.hand-review-body { margin-top: 14px; padding-top: 14px; border-top: 1px solid #E5E5E5; }
+.hand-review-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hand-review-cards > div { display: grid; gap: 8px; padding: 12px; border-radius: 8px; background: #FAFAFA; color: #666666; font-size: 12px; }
+.hand-review-cards > div > div { display: flex; gap: 6px; align-items: center; color: #111111; }
+.pot-review-list { display: grid; gap: 8px; margin-top: 16px; color: #666666; font-size: 12px; }
+.pot-review-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 12px; border-radius: 8px; background: #FAFAFA; }
 .community-cards { display: flex; gap: 8px; }
 .playing-card { width: 42px; height: 58px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border: 1px solid #D6D6D6; border-radius: 8px; background: #FFFFFF; color: #111111; font-size: 15px; line-height: 1.1; }
 .playing-card--red { color: #C83D54; }

@@ -6,6 +6,8 @@ import { HomePage } from '../../src/pages/Home/HomePage';
 import { createCareer } from '../../src/career/careerService';
 import { createDeck } from '../../src/game/cards';
 import { createTable, startHand } from '../../src/game/gameEngine';
+import { HandReview } from '../../src/components/HandReview/HandReview';
+import type { HandSummary } from '../../src/career/handHistory';
 
 describe('Chinese white minimal UI', () => {
   it('renders the home and career summary in Chinese', () => {
@@ -59,5 +61,19 @@ describe('Chinese white minimal UI', () => {
   it('renders a recoverable save error instead of a blank screen', () => {
     const html = renderToStaticMarkup(<HomePage career={null} loadError="存档无法恢复" onContinue={() => undefined} onNewCareer={() => undefined} onNavigate={() => undefined} />);
     expect(html).toContain('存档无法恢复');
+  });
+
+  it('renders a collapsible previous-hand review with pot awards and action timeline', () => {
+    const hand: HandSummary = {
+      handId: 'hand-review-1', timestamp: '2026-09-30T00:00:00.000Z', mode: 'STANDARD', tableLevel: 1, tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      playerHoleCards: [], communityCards: [], finalCategory: '两对', finalPot: 120, playerContribution: 60, playerNet: 60, result: 'WIN',
+      actionHistory: [{ playerId: 'AI', street: 'RIVER', action: 'call', amount: 20, totalTo: 60 }], potResults: [{ amount: 120, winnerPlayerIds: ['玩家'], awards: [{ playerId: '玩家', amount: 120 }] }],
+    };
+    const html = renderToStaticMarkup(<HandReview hand={hand} defaultExpanded collapsible />);
+    expect(html).toContain('上一手回顾');
+    expect(html).toContain('主池 120');
+    expect(html).toContain('玩家');
+    expect(html).toContain('行动时间线');
+    expect(html).toContain('收起上一手');
   });
 });
