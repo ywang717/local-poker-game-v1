@@ -165,14 +165,17 @@ h3 { margin-bottom: 14px; font-size: 15px; }
   .game-toolbar > div { display: flex; gap: 2px; }
   .poker-table { width: 100%; min-height: auto; padding: 12px; border-radius: 12px; }
   .table-header { flex-wrap: wrap; gap: 6px; }
-  .seat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
-  .player-seat { min-height: 104px; grid-template-columns: auto 1fr; gap: 6px; padding: 10px; }
-  .avatar { width: 30px; height: 30px; }
-  .seat-meta, .seat-contribution, .seat-status { font-size: 11px; }
+  .seat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 16px; }
+  .player-seat { position: relative; min-height: 96px; grid-template-columns: auto 1fr; gap: 2px 4px; padding: 6px; }
+  .avatar { width: 26px; height: 26px; }
+  .seat-meta, .seat-contribution, .seat-status { font-size: 10px; }
   .seat-badges { flex-wrap: wrap; }
-  .table-center { min-height: 130px; gap: 10px; }
+  .action-badge { position: absolute; right: 4px; bottom: 48px; z-index: 1; min-height: 20px; padding: 2px 4px; font-size: 9px; }
+  .action-badge__icon { width: 14px; height: 14px; font-size: 10px; }
+  .table-center { min-height: 100px; gap: 8px; }
   .community-cards { gap: 4px; }
-  .playing-card { width: 34px; height: 48px; font-size: 12px; }
+  .playing-card { width: 30px; height: 40px; font-size: 10px; }
+  .player-seat .playing-card { width: 28px; height: 34px; font-size: 9px; }
   .pot-display { flex-wrap: wrap; justify-content: center; gap: 6px; }
   .pot-display strong { font-size: 18px; }
   .settlement-controls { margin-top: 12px; padding: 12px; }
