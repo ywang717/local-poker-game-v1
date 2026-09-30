@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCareer } from '../../src/career/careerService';
 import { createDeck } from '../../src/game/cards';
-import { createTable, startHand } from '../../src/game/gameEngine';
+import { applyAction, createTable, startHand } from '../../src/game/gameEngine';
 import { useGameStore } from '../../src/store/gameStore';
 import { DEFAULT_SETTINGS, useSettingsStore } from '../../src/store/settingsStore';
 import { createPausableTimer, aiDelayMs } from '../../src/game/timers';
@@ -59,6 +59,20 @@ describe('pause, leave, settings and resume flows', () => {
     expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
     expect(useGameStore.getState().paused).toBe(false);
     expect(useGameStore.getState().leaveRequested).toBe(true);
+    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(true);
+  });
+
+  it('can leave when the human is facing a check-only post-flop decision', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    let state = startHand(table, createDeck('STANDARD'));
+    state = applyAction(state, { playerId: 'human', action: { kind: 'call' } }).state;
+    state = applyAction(state, { playerId: 'ai', action: { kind: 'check' } }).state;
+    state = applyAction(state, { playerId: 'ai', action: { kind: 'check' } }).state;
+    useGameStore.setState({ game: state, paused: false, leaveRequested: false });
+
+    expect(state.currentBet).toBe(0);
+    expect(state.actingSeat).toBe(0);
+    expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
     expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(true);
   });
 

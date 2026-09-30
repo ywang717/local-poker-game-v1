@@ -48,10 +48,9 @@ export function getLegalActions(state: GameState, playerId: string): LegalAction
   if (!player || state.actingSeat !== player.seat || !actionable(player)) return [];
   if (state.street === 'SHOWDOWN' || state.street === 'SETTLEMENT') return [];
   const toCall = Math.max(0, state.currentBet - player.streetContribution);
-  const actions: LegalAction[] = [];
-  if (toCall > 0) actions.push({ kind: 'fold' });
-  else actions.push({ kind: 'check' });
+  const actions: LegalAction[] = [{ kind: 'fold' }];
   if (toCall > 0) actions.push({ kind: 'call', amount: Math.min(toCall, player.stack) });
+  else actions.push({ kind: 'check' });
   const maxAmount = player.streetContribution + player.stack;
   if (state.currentBet === 0) {
     if (maxAmount >= state.bigBlind) actions.push({ kind: 'bet-to', minAmount: state.bigBlind, maxAmount });

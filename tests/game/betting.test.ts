@@ -32,6 +32,17 @@ describe('betting legality and transitions', () => {
     expect(state.communityCards).toHaveLength(3);
   });
 
+  it('keeps folding legal when checking is also available', () => {
+    let state = headsUp();
+    state = applyAction(state, { playerId: 'hero', action: { kind: 'call' } }).state;
+    state = applyAction(state, { playerId: 'villain', action: { kind: 'check' } }).state;
+    state = applyAction(state, { playerId: 'villain', action: { kind: 'check' } }).state;
+
+    expect(state.currentBet).toBe(0);
+    expect(state.actingSeat).toBe(0);
+    expect(getLegalActions(state, 'hero')).toEqual(expect.arrayContaining([{ kind: 'fold' }]));
+  });
+
   it('rejects an under-raise and an action from the wrong player', () => {
     const state = headsUp();
     const legal = getLegalActions(state, 'hero');

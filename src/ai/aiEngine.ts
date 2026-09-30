@@ -67,7 +67,7 @@ export function chooseAction(
     if (legal(context, 'check')) return { kind: 'check' };
   }
 
-  if (adjustedStrength < profile.foldThreshold + potOdds * 0.75 && roll > bluffChance) {
+  if (context.toCall > 0 && adjustedStrength < profile.foldThreshold + potOdds * 0.75 && roll > bluffChance) {
     if (legal(context, 'fold')) return { kind: 'fold' };
     if (legal(context, 'check')) return { kind: 'check' };
   }
