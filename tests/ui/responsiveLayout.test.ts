@@ -27,4 +27,10 @@ describe('responsive layout contract', () => {
     expect(mobileRules).toMatch(/\.table-center\s*\{[^}]*min-height:\s*100px/);
     expect(mobileRules).toMatch(/\.action-badge\s*\{[^}]*position:\s*absolute/);
   });
+
+  it('uses one seat per row on narrow phones and keeps controls in flow', () => {
+    const narrowRules = css.match(/@media \(max-width: 420px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    expect(narrowRules).toMatch(/\.seat-grid\s*\{[^}]*grid-template-columns:\s*1fr/);
+    expect(narrowRules).toMatch(/\.action-panel\s*\{[^}]*position:\s*sticky/);
+  });
 });
