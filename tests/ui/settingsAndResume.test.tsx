@@ -76,6 +76,26 @@ describe('pause, leave, settings and resume flows', () => {
     expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(true);
   });
 
+  it('auto-folds when a pending leave reaches the human after AI actions', () => {
+    const players = Array.from({ length: 6 }, (_, seat) => ({ id: seat === 0 ? 'human' : `ai-${seat}`, seat, stack: 100, isHuman: seat === 0 }));
+    const table = createTable({ mode: 'STANDARD', tableSize: 6, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players });
+    const state = startHand(table, createDeck('STANDARD'));
+    useGameStore.getState().setGame(state);
+    expect(state.actingSeat).not.toBe(0);
+    expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
+
+    let current = useGameStore.getState().game!;
+    while (current.actingSeat !== 0 && current.street !== 'SHOWDOWN') {
+      const actor = current.players.find((player) => player.seat === current.actingSeat)!;
+      const legal = useGameStore.getState().legalActions(actor.id);
+      const action = legal.some((entry) => entry.kind === 'call') ? { kind: 'call' as const } : { kind: 'check' as const };
+      expect(useGameStore.getState().dispatchAction(actor.id, action)).toBe(true);
+      current = useGameStore.getState().game!;
+    }
+
+    expect(current.players.find((player) => player.id === 'human')?.folded).toBe(true);
+  });
+
   it('persists settings and prefers an unfinished snapshot on startup', async () => {
     useSettingsStore.getState().updateSettings({ soundEnabled: false, aiSpeed: '2X' });
     await useSettingsStore.getState().save();

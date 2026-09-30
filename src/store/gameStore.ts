@@ -43,8 +43,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!game || get().paused) return false;
     const result = applyBettingAction(game, { playerId, action });
     if (!result.ok) return false;
-    set({ game: result.state });
-    persistGame(result.state);
+    let nextState = result.state;
+    if (get().leaveRequested && nextState.street !== 'SHOWDOWN' && nextState.street !== 'SETTLEMENT') {
+      const actor = nextState.actingSeat === null ? undefined : nextState.players.find((player) => player.seat === nextState.actingSeat);
+      if (actor?.isHuman) {
+        const folded = applyBettingAction(nextState, { playerId: actor.id, action: { kind: 'fold' } });
+        if (folded.ok) nextState = folded.state;
+      }
+    }
+    set({ game: nextState });
+    persistGame(nextState);
     return true;
   },
   togglePause: () => set((state) => ({ paused: !state.paused })),
