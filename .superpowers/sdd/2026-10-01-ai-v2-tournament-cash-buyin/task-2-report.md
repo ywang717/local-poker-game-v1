@@ -71,3 +71,17 @@ Command: `./node_modules/.bin/vite-node scripts/aiBaseline.ts`
 ## Commit
 
 Commit: `ed65fdf7fd0c392b34fbfbf56dc40054c7c08b00` — `feat: add ai v2 context and range primitives`
+
+## Review fix — experience metric event boundaries
+
+- VPIP/PFR denominators now count one pre-flop decision opportunity per
+  player-hand, with numerators counted once when that hand first becomes
+  voluntary/aggressive.
+- 3-Bet and 4-Bet events are classified from the public history immediately
+  before the action: an aggressive action facing an open is a 3-Bet, and one
+  facing a 3-Bet is a 4-Bet. Fold-to-3-Bet uses the same prior situation.
+- Added direct table-driven assertions for blind-only, facing-open, and
+  facing-3-Bet event boundaries.
+- Corrected baseline metrics: VPIP `47,342/59,977`, PFR `35,888/59,977`,
+  3-Bet `9,029/16,814`, and 4-Bet `8,489/17,057`. The complete output remains
+  in `docs/ai-balance/BASELINE.md`; action digest remains `58c9c800`.

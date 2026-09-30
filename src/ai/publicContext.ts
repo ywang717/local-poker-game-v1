@@ -11,6 +11,7 @@ export type PublicSidePot = { amount: number; eligiblePlayerIds: string[] };
 
 export type PublicTableContext = {
   aiPlayerId: string;
+  handId?: string;
   aiSeat: number;
   mode: GameState['mode'];
   tableSize: GameState['tableSize'];
@@ -79,6 +80,7 @@ export function toPublicContext(
   const potAmount = state.players.reduce((sum, player) => sum + player.handContribution, 0);
   return {
     aiPlayerId,
+    handId: state.handId ?? undefined,
     aiSeat: selfState.seat,
     mode: state.mode,
     tableSize: state.tableSize,
