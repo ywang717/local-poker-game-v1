@@ -36,5 +36,6 @@ describe('PWA release assets', () => {
     expect(readme).toContain('iPhone Safari');
     expect(readme).toContain('Android Chrome');
     expect(readme).toContain('各设备独立');
+    expect(readme).toContain('Settings → Pages');
   });
 });
