@@ -5,7 +5,7 @@ import { applyAction, createTable, startHand } from '../../src/game/gameEngine';
 import { useGameStore } from '../../src/store/gameStore';
 import { DEFAULT_SETTINGS, useSettingsStore } from '../../src/store/settingsStore';
 import { createPausableTimer, aiDelayMs } from '../../src/game/timers';
-import { getStartupDestination } from '../../src/App';
+import { App, createNextHand, getStartupDestination } from '../../src/App';
 import { loadHandSnapshot, resetStorageForTests } from '../../src/storage/saveSystem';
 import type { HandSnapshot } from '../../src/types/persistence';
 import { HistoryPage } from '../../src/pages/History/HistoryPage';
@@ -94,6 +94,31 @@ describe('pause, leave, settings and resume flows', () => {
     }
 
     expect(current.players.find((player) => player.id === 'human')?.folded).toBe(true);
+  });
+
+  it('waits at settlement and offers continue or leave controls', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    const state = { ...startHand(table, createDeck('STANDARD')), street: 'SETTLEMENT' as const };
+    const html = renderToStaticMarkup(<App initialCareer={createCareer('玩家')} initialView="GAME" initialGame={state} />);
+    expect(html).toContain('继续下一手');
+    expect(html).toContain('离开牌桌');
+    expect(html).toContain('本手已结算');
+  });
+
+  it('does not allow continuing after the human has lost the table stack', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    const started = startHand(table, createDeck('STANDARD'));
+    const state = { ...started, street: 'SETTLEMENT' as const, players: started.players.map((player) => player.isHuman ? { ...player, stack: 0 } : player) };
+    const html = renderToStaticMarkup(<App initialCareer={createCareer('玩家')} initialView="GAME" initialGame={state} />);
+    expect(html).toMatch(/disabled="">继续下一手/);
+  });
+
+  it('creates the next hand only through the explicit continue transition', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    const state = { ...startHand(table, createDeck('STANDARD')), street: 'SETTLEMENT' as const };
+    const next = createNextHand(state);
+    expect(next.handNumber).toBe(state.handNumber + 1);
+    expect(next.street).toBe('PRE_FLOP');
   });
 
   it('persists settings and prefers an unfinished snapshot on startup', async () => {

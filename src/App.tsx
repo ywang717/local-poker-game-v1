@@ -32,17 +32,32 @@ export function getStartupDestination(career: CareerState | null, snapshot: Hand
   return 'HOME';
 }
 
-function animationDelayMs(speed: 'NORMAL' | 'FAST' | 'INSTANT'): number {
-  if (speed === 'INSTANT') return 0;
-  return speed === 'FAST' ? 500 : 1_200;
-}
-
 function levelForBigBlind(bigBlind: number): TableLevelId {
   if (bigBlind >= 1_000) return 5;
   if (bigBlind >= 500) return 4;
   if (bigBlind >= 200) return 3;
   if (bigBlind >= 100) return 2;
   return 1;
+}
+
+export function createNextHand(current: GameState): GameState {
+  if (current.street !== 'SETTLEMENT') throw new Error('Next hand can only start after settlement');
+  const human = current.players.find((player) => player.isHuman);
+  if (!human || human.stack <= 0) throw new Error('Human player cannot continue without chips');
+  const level = getTableLevel(levelForBigBlind(current.bigBlind));
+  const occupiedSeats = new Set(current.players.map((player) => player.seat));
+  const nextDealer = nextDealerSeat(current.tableSize, current.dealerSeat, occupiedSeats);
+  const players = current.players.map((player) => ({
+    id: player.id,
+    name: player.name,
+    seat: player.seat,
+    isHuman: player.isHuman,
+    stack: player.isHuman ? player.stack : player.stack > 0 ? player.stack : level.buyIn,
+  }));
+  const table = createTable({ mode: current.mode, tableSize: current.tableSize, smallBlind: current.smallBlind, bigBlind: current.bigBlind, dealerSeat: nextDealer, players });
+  const next = startHand(table, shuffleDeck(createDeck(current.mode)));
+  next.handNumber = current.handNumber + 1;
+  return next;
 }
 
 function handSummary(state: GameState): HandSummary | null {
@@ -95,7 +110,6 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const leaveRequested = useGameStore((state) => state.leaveRequested);
   const requestLeave = useGameStore((state) => state.requestLeave);
   const loadSettings = useSettingsStore((state) => state.load);
-  const animationSpeed = useSettingsStore((state) => state.animationSpeed);
   const career = storeCareer ?? initialCareer ?? null;
   const game = storeGame ?? initialGame ?? null;
   const opponentModels = useMemo(() => buildPlayerModels(career?.handHistory ?? []), [career?.handHistory]);
@@ -150,32 +164,8 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   };
 
   useEffect(() => {
-    if (!game || game.street !== 'SETTLEMENT' || !game.handId) return;
-    recordSettledHand(game);
-    const handId = game.handId;
-    const timer = setTimeout(() => {
-      const current = useGameStore.getState().game;
-      if (!current || current.handId !== handId || current.street !== 'SETTLEMENT') return;
-      const human = current.players.find((player) => player.isHuman);
-      if (!human || leaveRequested || human.stack <= 0) {
-        finishTableExit(current);
-        return;
-      }
-      const level = getTableLevel(levelForBigBlind(current.bigBlind));
-      const occupiedSeats = new Set(current.players.map((player) => player.seat));
-      const nextDealer = nextDealerSeat(current.tableSize, current.dealerSeat, occupiedSeats);
-      const players = current.players.map((player) => ({
-        id: player.id,
-        name: player.name,
-        seat: player.seat,
-        isHuman: player.isHuman,
-        stack: player.isHuman ? player.stack : player.stack > 0 ? player.stack : level.buyIn,
-      }));
-      const table = createTable({ mode: current.mode, tableSize: current.tableSize, smallBlind: current.smallBlind, bigBlind: current.bigBlind, dealerSeat: nextDealer, players });
-      setGame(startHand(table, shuffleDeck(createDeck(current.mode))));
-    }, animationDelayMs(animationSpeed));
-    return () => clearTimeout(timer);
-  }, [animationSpeed, game, leaveRequested, recordHand, setGame]);
+    if (game?.street === 'SETTLEMENT') recordSettledHand(game);
+  }, [game]);
 
   const ensureCareer = () => career ?? createNewCareer('玩家');
   const startNewCareer = (nickname: string) => {
@@ -207,12 +197,21 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     }
     requestLeave();
   };
+  const continueHand = () => {
+    const current = useGameStore.getState().game;
+    if (!current || current.street !== 'SETTLEMENT') return;
+    if (leaveRequested || current.players.find((player) => player.isHuman)?.stack === 0) {
+      finishTableExit(current);
+      return;
+    }
+    setGame(createNextHand(current));
+  };
   const navigate = (next: AppView) => setView(next);
   let content: React.ReactNode;
   if (view === 'HOME') content = <HomePage career={career} loadError={loadError} onContinue={() => setView(career ? 'CAREER' : 'HOME')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
   else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onNavigate={(next) => setView(next)} />;
   else if (view === 'TABLE_SELECT' && career) content = <TableSelectPage career={career} onEnter={enterTable} />;
-  else if (view === 'GAME' && game) content = <GamePage game={game} opponentModels={opponentModels} paused={paused} leaveRequested={leaveRequested} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+  else if (view === 'GAME' && game) content = <GamePage game={game} opponentModels={opponentModels} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack)} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
   else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
   else if (view === 'SETTINGS') content = <SettingsPage />;
