@@ -32,6 +32,10 @@ export function getStartupDestination(career: CareerState | null, snapshot: Hand
   return 'HOME';
 }
 
+export function shouldFinishTableExitAfterSettlement(game: GameState | null, leaveRequested: boolean): boolean {
+  return Boolean(game && leaveRequested && game.street === 'SETTLEMENT');
+}
+
 function levelForBigBlind(bigBlind: number): TableLevelId {
   if (bigBlind >= 1_000) return 5;
   if (bigBlind >= 500) return 4;
@@ -164,8 +168,10 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   };
 
   useEffect(() => {
-    if (game?.street === 'SETTLEMENT') recordSettledHand(game);
-  }, [game]);
+    if (!game || game.street !== 'SETTLEMENT') return;
+    if (shouldFinishTableExitAfterSettlement(game, leaveRequested)) finishTableExit(game);
+    else recordSettledHand(game);
+  }, [game, leaveRequested]);
 
   const ensureCareer = () => career ?? createNewCareer('玩家');
   const startNewCareer = (nickname: string) => {

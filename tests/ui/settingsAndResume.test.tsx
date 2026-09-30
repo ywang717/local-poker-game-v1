@@ -5,7 +5,7 @@ import { applyAction, createTable, startHand } from '../../src/game/gameEngine';
 import { useGameStore } from '../../src/store/gameStore';
 import { DEFAULT_SETTINGS, useSettingsStore } from '../../src/store/settingsStore';
 import { createPausableTimer, aiDelayMs } from '../../src/game/timers';
-import { App, createNextHand, getStartupDestination } from '../../src/App';
+import { App, createNextHand, getStartupDestination, shouldFinishTableExitAfterSettlement } from '../../src/App';
 import { loadHandSnapshot, resetStorageForTests } from '../../src/storage/saveSystem';
 import type { HandSnapshot } from '../../src/types/persistence';
 import { HistoryPage } from '../../src/pages/History/HistoryPage';
@@ -94,6 +94,13 @@ describe('pause, leave, settings and resume flows', () => {
     }
 
     expect(current.players.find((player) => player.id === 'human')?.folded).toBe(true);
+  });
+
+  it('finishes the table exit when a pending leave reaches settlement', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    const settlement = { ...startHand(table, createDeck('STANDARD')), street: 'SETTLEMENT' as const };
+    expect(shouldFinishTableExitAfterSettlement(settlement, true)).toBe(true);
+    expect(shouldFinishTableExitAfterSettlement(settlement, false)).toBe(false);
   });
 
   it('waits at settlement and offers continue or leave controls', () => {
