@@ -15,4 +15,9 @@ describe('responsive layout contract', () => {
     expect(css).toContain('min-height: 44px');
     expect(css).toContain('env(safe-area-inset-bottom)');
   });
+
+  it('keeps quick bet controls large enough to tap', () => {
+    expect(css).toMatch(/\.quick-bet\s*\{[^}]*min-height:\s*44px/);
+    expect(css).not.toContain('.quick-bet { min-height: 36px');
+  });
 });

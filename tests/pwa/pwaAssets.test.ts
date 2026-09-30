@@ -21,6 +21,14 @@ describe('PWA release assets', () => {
     ]));
   });
 
+  it('provides a browser favicon without a missing resource request', () => {
+    const favicon = readFileSync(new URL('../../public/favicon.svg', import.meta.url), 'utf8');
+    const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    expect(favicon).toContain('<svg');
+    expect(html).toContain('rel="icon"');
+    expect(html).toContain('%BASE_URL%favicon.svg');
+  });
+
   it('provides a Pages deployment workflow with the required build steps', () => {
     const workflow = readFileSync(new URL('../../.github/workflows/deploy-pages.yml', import.meta.url), 'utf8');
     expect(workflow).toContain('actions/configure-pages');

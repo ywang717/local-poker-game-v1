@@ -99,7 +99,7 @@ h3 { margin-bottom: 14px; font-size: 15px; }
 .raise-control { display: flex; flex-direction: column; gap: 4px; color: #666666; font-size: 11px; }
 .raise-control input { width: 110px; height: 44px; padding: 0 8px; border: 1px solid #E5E5E5; border-radius: 8px; }
 .quick-bets { display: flex; gap: 4px; flex-wrap: wrap; max-width: 260px; }
-.quick-bet { border: 1px solid #E5E5E5; border-radius: 6px; padding: 3px 6px; background: #FFFFFF; color: #666666; font-size: 10px; }
+.quick-bet { min-height: 44px; border: 1px solid #E5E5E5; border-radius: 6px; padding: 3px 10px; background: #FFFFFF; color: #666666; font-size: 10px; }
 .button small { margin-left: 4px; font-size: 10px; opacity: .7; }
 .paused-banner { margin: 32px auto; width: fit-content; padding: 12px 20px; border: 1px solid #E5E5E5; border-radius: 8px; background: #FFFFFF; color: #666666; }
 .history-list { display: grid; gap: 8px; }
@@ -183,7 +183,7 @@ h3 { margin-bottom: 14px; font-size: 15px; }
   .raise-control { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; }
   .raise-control input { flex: 1 1 120px; width: auto; min-height: 44px; }
   .quick-bets { width: 100%; max-width: none; }
-  .quick-bet { min-height: 36px; padding: 6px 8px; }
+  .quick-bet { min-height: 44px; padding: 6px 8px; }
   .hand-review { margin-top: 12px; padding: 12px; }
   .hand-review-cards, .detail-cards, .detail-stats { grid-template-columns: 1fr; }
   .pot-review-row { grid-template-columns: 1fr; }
