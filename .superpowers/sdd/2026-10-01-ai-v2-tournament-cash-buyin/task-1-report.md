@@ -28,3 +28,17 @@ The three existing V1 persistence assertions still expect `saveVersion: 1` and e
 - `tests/storage/saveSystem.test.ts` (1 assertion)
 
 No betting rules or unrelated AI/UI/tournament implementation was changed.
+
+## Review fixes (2026-10-01)
+
+- `migrateHandSnapshot` now rejects every snapshot version except 1 and 2. `loadHandSnapshot` therefore skips an unsupported current record and correctly recovers a valid backup.
+- Refunds now validate persisted `requestedAmount` and `reservedAmount` as positive safe integers before any arithmetic.
+- Narrowed `HandSnapshot.saveVersion` to `1 | 2`.
+- Updated stale V1 persistence assertions to verify V2 migration behavior.
+- Added regression coverage for unsupported-current/valid-backup recovery and malformed pending reservation amounts.
+
+### Review-fix verification
+
+- `npm test -- --run tests/storage/v2Migrations.test.ts tests/career/transactions.test.ts tests/game/sessionMetadata.test.ts tests/storage/migrations.test.ts tests/storage/saveSystem.test.ts` — passed (5 files, 16 tests).
+- `npm run typecheck` — passed.
+- `npm test -- --run` — passed (31 files, 164 tests).

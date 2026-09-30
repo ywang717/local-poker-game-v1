@@ -9,7 +9,7 @@ export type VersionedSave = {
 };
 
 export type HandSnapshot = {
-  saveVersion: number;
+  saveVersion: 1 | typeof CURRENT_SAVE_VERSION;
   savedAt: string;
   state: GameState;
 };

@@ -22,4 +22,9 @@ describe('v2 financial transactions', () => {
     expect(refunded.currentFunds).toBe(10000);
     expect(refundPendingCashBuyIn(refunded, 't1').currentFunds).toBe(10000);
   });
+  it('rejects malformed persisted reservation amounts before arithmetic', () => {
+    const career = createCareer('玩家');
+    career.pendingCashBuyIns = [{ transactionId: 'bad', sessionId: 's1', requestedAmount: 1, reservedAmount: Number.NaN, status: 'PENDING' }];
+    expect(() => refundPendingCashBuyIn(career, 'bad')).toThrow(/invalid pending/i);
+  });
 });

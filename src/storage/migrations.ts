@@ -46,6 +46,7 @@ export function migrateSave(data: unknown): VersionedSave {
 
 export function migrateHandSnapshot(data: unknown): HandSnapshot {
   if (!isObject(data) || !isObject(data.state) || !Array.isArray(data.state.deck)) throw new Error('Invalid hand snapshot');
+  if (data.saveVersion !== 1 && data.saveVersion !== CURRENT_SAVE_VERSION) throw new Error(`Unsupported hand snapshot version ${String(data.saveVersion)}`);
   const state = structuredClone(data.state) as GameState & Record<string, any>;
   const mode = state.mode ?? 'STANDARD';
   const tableLevel = state.tableLevel ?? levelForBigBlind(state.bigBlind);

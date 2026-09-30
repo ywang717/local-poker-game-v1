@@ -27,6 +27,7 @@ export function refundPendingCashBuyIn(career: CareerState, transactionId: strin
   const source = ensureLedger(clone(career));
   const pending = source.pendingCashBuyIns.find((p) => p.transactionId === transactionId);
   if (!pending || pending.status !== 'PENDING') return source;
+  if (!validAmount(pending.reservedAmount) || !validAmount(pending.requestedAmount)) throw new Error('Invalid pending cash buy-in amount');
   pending.status = 'REFUNDED'; source.currentFunds += pending.reservedAmount;
   const tx = source.financialTransactions.find((t) => t.transactionId === transactionId);
   if (tx) tx.status = 'REFUNDED';
