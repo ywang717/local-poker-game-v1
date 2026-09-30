@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chooseAction } from '../../src/ai/aiEngine';
-import { getPreflopProfile } from '../../src/ai/preflopRanges';
+import { getPreflopProfile, preflopStrength } from '../../src/ai/preflopRanges';
 import { DIFFICULTY_LEVELS, getDifficultyProfile } from '../../src/ai/difficulty';
 import { getPersonality, PERSONALITIES } from '../../src/ai/personalities';
 import type { PublicTableContext } from '../../src/ai/publicContext';
@@ -80,6 +80,12 @@ describe('heuristic AI', () => {
     expect(shortDeck.connectedBonus).not.toBe(standard.connectedBonus);
   });
 
+  it('scores the same marginal hand differently by table size and position', () => {
+    const headsUp = preflopStrength([c(9, 'spades'), c(8, 'spades')], 'STANDARD', { tableSize: 2, position: 'HEADS_UP', difficulty: 3 });
+    const fullRingEarly = preflopStrength([c(9, 'spades'), c(8, 'spades')], 'STANDARD', { tableSize: 9, position: 'EARLY', difficulty: 3 });
+    expect(headsUp).toBeGreaterThan(fullRingEarly);
+  });
+
   it('always returns an action inside the supplied legal action set', () => {
     const table = context();
     for (const level of DIFFICULTY_LEVELS) {
@@ -91,6 +97,19 @@ describe('heuristic AI', () => {
         expect(action.amount).toBeLessThanOrEqual(legal.maxAmount);
       }
     }
+  });
+
+  it('uses a deliberate pot-sized raise instead of a random stack-sized raise', () => {
+    const table = context({
+      potAmount: 100,
+      currentBet: 10,
+      toCall: 10,
+      self: { ...context().self, stack: 1_000, holeCards: [c(14, 'spades'), c(14, 'hearts')] },
+      legalActions: [{ kind: 'fold' }, { kind: 'call', amount: 10 }, { kind: 'raise-to', minAmount: 20, maxAmount: 1_000 }, { kind: 'all-in', amount: 1_000 }],
+    });
+    const action = chooseAction(table, 5, PERSONALITIES.BALANCED, () => 0.99);
+    expect(['bet-to', 'raise-to']).toContain(action.kind);
+    if (action.kind === 'raise-to' || action.kind === 'bet-to') expect(action.amount).toBeLessThanOrEqual(200);
   });
 
   it('keeps personality as a small threshold adjustment within the same difficulty', () => {
