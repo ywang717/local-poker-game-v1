@@ -4,6 +4,7 @@ import { appendHandHistory, type HandSummary } from './handHistory';
 import { createEmptyStatistics, recordStatistics } from './statistics';
 import { getTableLevel, TABLE_LEVELS, type TableLevel, type TableLevelId } from './tableLevels';
 import type { CareerState } from './careerState';
+import { createEmptyTournamentStatistics } from './tournamentStatistics';
 
 const MINIMUM_FUNDS = 5_000;
 
@@ -19,6 +20,9 @@ function cloneCareer(career: CareerState): CareerState {
     },
     handHistory: career.handHistory.map((entry) => ({ ...entry, playerHoleCards: [...entry.playerHoleCards], communityCards: [...entry.communityCards], actionHistory: entry.actionHistory.map((record) => ({ ...record })), playerNames: entry.playerNames ? { ...entry.playerNames } : undefined, potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })) })),
     recordedHandIds: [...career.recordedHandIds],
+    financialTransactions: (career.financialTransactions ?? []).map((entry) => ({ ...entry })),
+    pendingCashBuyIns: (career.pendingCashBuyIns ?? []).map((entry) => ({ ...entry })),
+    tournamentStatistics: { ...(career.tournamentStatistics ?? createEmptyTournamentStatistics()) },
   };
 }
 
@@ -39,7 +43,7 @@ export function createCareer(nickname: string): CareerState {
   if (!normalized) throw new Error('Nickname is required');
   const createdAt = new Date().toISOString();
   return {
-    saveVersion: 1,
+    saveVersion: 2,
     nickname: normalized,
     createdAt,
     currentFunds: 10_000,
@@ -53,6 +57,9 @@ export function createCareer(nickname: string): CareerState {
     statistics: createEmptyStatistics(10_000),
     handHistory: [],
     recordedHandIds: [],
+    financialTransactions: [],
+    pendingCashBuyIns: [],
+    tournamentStatistics: createEmptyTournamentStatistics(),
   };
 }
 

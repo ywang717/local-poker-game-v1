@@ -1,6 +1,8 @@
 import type { Card } from './cards';
 import type { GameMode } from './rules';
 import type { PotRefund } from './pot';
+import type { MatchSession, MatchType } from '../match/matchTypes';
+import type { TableLevelId } from '../career/tableLevels';
 
 export const SUPPORTED_TABLE_SIZES = [2, 3, 4, 5, 6, 8, 9] as const;
 export type TableSize = (typeof SUPPORTED_TABLE_SIZES)[number];
@@ -22,6 +24,10 @@ export type TableConfig = {
   bigBlind: number;
   players: readonly TablePlayerConfig[];
   dealerSeat?: number;
+  sessionId?: string;
+  matchType?: MatchType;
+  tableLevel?: TableLevelId;
+  session?: MatchSession;
 };
 
 export type PlayerState = {
@@ -69,6 +75,11 @@ export type ActionRecord = {
 };
 
 export type GameState = {
+  /** V2 session metadata; optional for source compatibility with hand fixtures. */
+  sessionId?: string;
+  matchType?: MatchType;
+  tableLevel?: TableLevelId;
+  session?: MatchSession;
   handId: string | null;
   handNumber: number;
   mode: GameMode;

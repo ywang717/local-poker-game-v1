@@ -3,6 +3,8 @@ import { applyAction as applyBettingAction, advanceStreet, getLegalActions } fro
 import { blindSeats, getActionOrder } from './dealer';
 import type { GameMode } from './rules';
 import type { GameState, TableConfig, TransitionResult } from './gameState';
+import { createMatchSession } from '../match/session';
+import { getTableLevel, type TableLevelId } from '../career/tableLevels';
 
 let fallbackHandIdSequence = 0;
 
@@ -14,6 +16,11 @@ function handIdFor(state: GameState): string {
 
 function assertPositiveInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be a positive integer`);
+}
+
+function levelForBigBlind(bigBlind: number): TableLevelId {
+  const level = [...[1, 2, 3, 4, 5] as const].reverse().find((id) => getTableLevel(id).bigBlind <= bigBlind);
+  return level ?? 1;
 }
 
 export function createTable(config: TableConfig): GameState {
@@ -42,7 +49,12 @@ export function createTable(config: TableConfig): GameState {
     };
   }).sort((left, right) => left.seat - right.seat);
   const dealerSeat = config.dealerSeat ?? players[0]?.seat ?? 0;
+  const session = config.session ?? createMatchSession({ mode: config.mode, tableLevel: config.tableLevel ?? levelForBigBlind(config.bigBlind), matchType: config.matchType ?? 'CASH', sessionId: config.sessionId });
   return {
+    sessionId: session.sessionId,
+    matchType: session.matchType,
+    tableLevel: session.tableLevel,
+    session,
     handId: null,
     handNumber: 0,
     mode: config.mode,
