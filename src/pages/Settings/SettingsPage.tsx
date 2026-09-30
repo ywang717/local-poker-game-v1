@@ -1,0 +1,7 @@
+import { useSettingsStore } from '../../store/settingsStore';
+
+export function SettingsPage() {
+  const settings = useSettingsStore();
+  const update = (patch: Parameters<typeof settings.updateSettings>[0]) => { settings.updateSettings(patch); void settings.save(); };
+  return <section className="page"><p className="eyebrow">设置</p><h2>游戏设置</h2><div className="settings-list"><label>音效 <input type="checkbox" checked={settings.soundEnabled} onChange={(event) => update({ soundEnabled: event.target.checked })} /></label><label>动画速度 <select value={settings.animationSpeed} onChange={(event) => update({ animationSpeed: event.target.value as typeof settings.animationSpeed })}><option value="NORMAL">正常</option><option value="FAST">快速</option><option value="INSTANT">极快</option></select></label><label>AI 速度 <select value={settings.aiSpeed} onChange={(event) => update({ aiSpeed: event.target.value as typeof settings.aiSpeed })}><option value="NORMAL">正常</option><option value="2X">2X</option><option value="INSTANT">极速</option></select></label><label>All-in 二次确认 <input type="checkbox" checked={settings.allInConfirmation} onChange={(event) => update({ allInConfirmation: event.target.checked })} /></label><label>自动显示获胜牌 <input type="checkbox" checked={settings.autoShowWinningHand} onChange={(event) => update({ autoShowWinningHand: event.target.checked })} /></label><label>短牌规则提示 <input type="checkbox" checked={settings.shortDeckNotice} onChange={(event) => update({ shortDeckNotice: event.target.checked })} /></label></div></section>;
+}

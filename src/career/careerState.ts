@@ -1,0 +1,22 @@
+import type { GameMode } from '../game/rules';
+import type { TableSize } from '../game/gameState';
+import type { HandSummary } from './handHistory';
+import type { CareerStatistics } from './statistics';
+import type { TableLevelId } from './tableLevels';
+
+export type CareerState = {
+  saveVersion: number;
+  nickname: string;
+  createdAt: string;
+  currentFunds: number;
+  peakFunds: number;
+  lowestFunds: number;
+  activeTableStack: number | null;
+  defaultMode: GameMode;
+  defaultTableSize: TableSize;
+  unlockedLevels: TableLevelId[];
+  bankruptcyCount: number;
+  statistics: CareerStatistics;
+  handHistory: HandSummary[];
+  recordedHandIds: string[];
+};

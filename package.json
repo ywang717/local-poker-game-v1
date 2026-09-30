@@ -1,0 +1,29 @@
+{
+  "name": "local-poker-game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {"node": ">=22.13.0"},
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc -b --pretty false",
+    "test:simulation": "vitest run tests/simulation tests/release"
+  },
+  "dependencies": {
+    "@hivetech/poker-engine": "1.0.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zustand": "5.0.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "fake-indexeddb": "6.2.4",
+    "typescript": "5.9.3",
+    "vite": "8.0.13",
+    "vitest": "3.2.4"
+  }
+}

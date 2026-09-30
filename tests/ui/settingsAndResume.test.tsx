@@ -1,0 +1,92 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createCareer } from '../../src/career/careerService';
+import { createDeck } from '../../src/game/cards';
+import { createTable, startHand } from '../../src/game/gameEngine';
+import { useGameStore } from '../../src/store/gameStore';
+import { DEFAULT_SETTINGS, useSettingsStore } from '../../src/store/settingsStore';
+import { createPausableTimer, aiDelayMs } from '../../src/game/timers';
+import { getStartupDestination } from '../../src/App';
+import { loadHandSnapshot, resetStorageForTests } from '../../src/storage/saveSystem';
+import type { HandSnapshot } from '../../src/types/persistence';
+import { HistoryPage } from '../../src/pages/History/HistoryPage';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+beforeEach(async () => {
+  useGameStore.setState({ game: null, paused: false, leaveRequested: false });
+  useSettingsStore.setState(DEFAULT_SETTINGS);
+  await resetStorageForTests();
+});
+
+describe('pause, leave, settings and resume flows', () => {
+  it('pauses a cancelable AI timer without consuming its callback', () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const timer = createPausableTimer(() => { calls += 1; }, 100);
+      timer.pause();
+      vi.advanceTimersByTime(200);
+      expect(calls).toBe(0);
+      timer.resume();
+      vi.advanceTimersByTime(99);
+      expect(calls).toBe(0);
+      vi.advanceTimersByTime(1);
+      expect(calls).toBe(1);
+      expect(aiDelayMs('2X', 0.8)).toBeLessThan(aiDelayMs('NORMAL', 0.8));
+      expect(aiDelayMs('INSTANT', 1)).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('defers leaving an active hand and leaves immediately between hands', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100 }, { id: 'ai', seat: 1, stack: 100 }] });
+    const state = startHand(table, createDeck('STANDARD'));
+    useGameStore.getState().setGame(state);
+    expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
+    expect(useGameStore.getState().leaveRequested).toBe(true);
+    useGameStore.getState().completeHand();
+    expect(useGameStore.getState().game).toBeNull();
+    useGameStore.getState().setGame({ ...state, street: 'SETTLEMENT' });
+    expect(useGameStore.getState().requestLeave()).toBe('IMMEDIATE');
+    expect(useGameStore.getState().game).toBeNull();
+  });
+
+  it('persists settings and prefers an unfinished snapshot on startup', async () => {
+    useSettingsStore.getState().updateSettings({ soundEnabled: false, aiSpeed: '2X' });
+    await useSettingsStore.getState().save();
+    useSettingsStore.setState(DEFAULT_SETTINGS);
+    await useSettingsStore.getState().load();
+    expect(useSettingsStore.getState().soundEnabled).toBe(false);
+    expect(useSettingsStore.getState().aiSpeed).toBe('2X');
+    const career = createCareer('玩家');
+    const snapshot = { saveVersion: 1 as const, savedAt: '2026-09-30T00:00:00.000Z', state: { handId: 'h1', street: 'FLOP' } as HandSnapshot['state'] };
+    expect(getStartupDestination(career, snapshot)).toBe('GAME');
+    expect(getStartupDestination(career, { ...snapshot, state: { ...snapshot.state, street: 'SETTLEMENT' } })).toBe('GAME');
+    expect(getStartupDestination(career, null)).toBe('CAREER');
+  });
+
+  it('automatically persists and clears the current hand snapshot with store changes', async () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100 }, { id: 'ai', seat: 1, stack: 100 }] });
+    const state = startHand(table, createDeck('STANDARD'));
+    useGameStore.getState().setGame(state);
+    await vi.waitFor(async () => expect((await loadHandSnapshot())?.state).toEqual(state));
+
+    const actor = state.players.find((player) => player.seat === state.actingSeat)!;
+    const action = { kind: 'call' as const };
+    expect(useGameStore.getState().dispatchAction(actor.id, action)).toBe(true);
+    await vi.waitFor(async () => expect((await loadHandSnapshot())?.state.actionHistory).toHaveLength(1));
+
+    useGameStore.getState().setGame(null);
+    await vi.waitFor(async () => expect(await loadHandSnapshot()).toBeNull());
+  });
+
+  it('renders a history detail timeline with cards, pot, result and actions', () => {
+    const career = createCareer('玩家');
+    career.handHistory = [{ handId: 'h1', timestamp: '2026-09-30T00:00:00.000Z', mode: 'STANDARD', tableLevel: 1, tableSize: 6, smallBlind: 25, bigBlind: 50, dealerSeat: 0, playerHoleCards: [], communityCards: [], finalCategory: '两对', finalPot: 8600, playerContribution: 400, playerNet: 4800, result: 'WIN', actionHistory: [{ playerId: 'ai', street: 'PRE_FLOP', action: 'call', amount: 100, totalTo: 100 }] }];
+    const html = renderToStaticMarkup(<HistoryPage career={career} />);
+    expect(html).toContain('h1');
+    expect(html).toContain('8,600');
+    expect(html).toContain('两对');
+    expect(html).toContain('行动时间线');
+  });
+});
