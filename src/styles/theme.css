@@ -165,9 +165,9 @@ h3 { margin-bottom: 14px; font-size: 15px; }
   .game-toolbar > div { display: flex; gap: 2px; }
   .poker-table { width: 100%; min-height: auto; padding: 12px; border-radius: 12px; }
   .table-header { flex-wrap: wrap; gap: 6px; }
-  .seat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 16px; }
-  .player-seat { position: relative; min-height: 96px; grid-template-columns: auto 1fr; gap: 2px 4px; padding: 6px; }
-  .avatar { width: 26px; height: 26px; }
+  .seat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; margin-top: 16px; }
+  .player-seat { position: relative; min-height: 92px; grid-template-columns: auto 1fr; gap: 1px 3px; padding: 4px; }
+  .avatar { width: 24px; height: 24px; }
   .seat-meta, .seat-contribution, .seat-status { font-size: 10px; }
   .seat-badges { flex-wrap: wrap; }
   .action-badge { position: absolute; right: 4px; bottom: 48px; z-index: 1; min-height: 20px; padding: 2px 4px; font-size: 9px; }
