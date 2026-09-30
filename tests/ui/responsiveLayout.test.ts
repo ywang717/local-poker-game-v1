@@ -25,5 +25,6 @@ describe('responsive layout contract', () => {
     const mobileRules = css.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
     expect(mobileRules).toMatch(/\.seat-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3/);
     expect(mobileRules).toMatch(/\.table-center\s*\{[^}]*min-height:\s*100px/);
+    expect(mobileRules).toMatch(/\.action-badge\s*\{[^}]*position:\s*absolute/);
   });
 });
