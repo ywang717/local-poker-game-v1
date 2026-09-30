@@ -141,7 +141,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       }
     }).catch(() => undefined);
     return () => { active = false; };
-  }, [initialCareer, initialGame, initialView, loadSettings, setCareer, setGame, storeCareer, storeGame]);
+  }, [initialCareer, initialGame, initialView, loadSettings, setCareer, setGame]);
 
   useEffect(() => {
     if (!game || game.street !== 'SHOWDOWN') return;
