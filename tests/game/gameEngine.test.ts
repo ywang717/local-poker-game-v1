@@ -26,4 +26,18 @@ describe('game engine state', () => {
     expect(state.players.find((entry) => entry.id === player.id)?.allIn).toBe(true);
     expect(state.actingSeat).toBe(1 - player.seat);
   });
+
+  it('runs an all-in blind hand through the board without leaving a dead acting seat', () => {
+    const config: TableConfig = {
+      mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10,
+      players: [{ id: 'a', seat: 0, stack: 5 }, { id: 'b', seat: 1, stack: 5 }],
+    };
+
+    const state = startHand(createTable(config), createDeck('STANDARD'));
+
+    expect(state.street).toBe('SHOWDOWN');
+    expect(state.actingSeat).toBeNull();
+    expect(state.communityCards).toHaveLength(5);
+    expect(state.players.every((player) => player.allIn)).toBe(true);
+  });
 });

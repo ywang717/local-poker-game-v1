@@ -125,7 +125,7 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
   next.actingSeat = getActionOrder(next.tableSize, next.dealerSeat, 'PRE_FLOP')
     .map((seat) => next.players.find((player) => player.seat === seat))
     .find((player): player is GameState['players'][number] => Boolean(player && !player.folded && !player.allIn))?.seat ?? null;
-  return next;
+  return next.actingSeat === null ? advanceStreet(next) : next;
 }
 
 export { advanceStreet, getLegalActions, getActionOrder };

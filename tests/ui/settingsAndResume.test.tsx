@@ -51,6 +51,17 @@ describe('pause, leave, settings and resume flows', () => {
     expect(useGameStore.getState().game).toBeNull();
   });
 
+  it('folds a human turn and resumes a paused hand when leaving the table', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
+    const state = startHand(table, createDeck('STANDARD'));
+    useGameStore.setState({ game: state, paused: true, leaveRequested: false });
+
+    expect(useGameStore.getState().requestLeave()).toBe('AFTER_HAND');
+    expect(useGameStore.getState().paused).toBe(false);
+    expect(useGameStore.getState().leaveRequested).toBe(true);
+    expect(useGameStore.getState().game?.players.find((player) => player.id === 'human')?.folded).toBe(true);
+  });
+
   it('persists settings and prefers an unfinished snapshot on startup', async () => {
     useSettingsStore.getState().updateSettings({ soundEnabled: false, aiSpeed: '2X' });
     await useSettingsStore.getState().save();

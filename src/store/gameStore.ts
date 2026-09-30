@@ -51,11 +51,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   requestLeave: () => {
     const game = get().game;
     if (!game || game.street === 'SHOWDOWN' || game.street === 'SETTLEMENT') {
-      set({ game: null, leaveRequested: false });
+      set({ game: null, paused: false, leaveRequested: false });
       persistGame(null);
       return 'IMMEDIATE';
     }
-    set({ leaveRequested: true });
+    const actor = game.actingSeat === null ? undefined : game.players.find((player) => player.seat === game.actingSeat);
+    if (actor?.isHuman) {
+      const result = applyBettingAction(game, { playerId: actor.id, action: { kind: 'fold' } });
+      if (result.ok) {
+        set({ game: result.state, paused: false, leaveRequested: true });
+        persistGame(result.state);
+        return 'AFTER_HAND';
+      }
+    }
+    set({ paused: false, leaveRequested: true });
     return 'AFTER_HAND';
   },
   completeHand: () => {
