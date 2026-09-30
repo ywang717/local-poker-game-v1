@@ -34,4 +34,26 @@ describe('AI experience baseline harness', () => {
     expect(accumulator.metrics[metric].numerator).toBe(expected);
     expect(accumulator.metrics[metric].denominator).toBe(expected);
   });
+
+  it.each([
+    ['short all-in call', 0, 14, 0],
+    ['short all-in raise that does not reopen', 30, 14, 0],
+    ['full all-in raise', 30, 30, 1],
+  ] as const)('counts only a full all-in as a 3-Bet: %s', (_name, contribution, stack, expected) => {
+    const state = startHand(createTable({
+      mode: 'STANDARD', tableSize: 6, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      players: Array.from({ length: 6 }, (_, seat) => ({ id: `p${seat}`, seat, stack: 100 })),
+    }), createDeck('STANDARD'));
+    const open = { playerId: 'p3', street: 'PRE_FLOP' as const, action: 'raise-to' as const, amount: 20, totalTo: 30 };
+    const base = toPublicContext({ ...state, actionHistory: [open] }, 'p0');
+    const context = {
+      ...base,
+      currentBet: 30,
+      lastFullRaise: 20,
+      self: { ...base.self, streetContribution: contribution, stack },
+    };
+    const accumulator = createExperienceAccumulator();
+    observeExperienceAction(accumulator, context, { kind: 'all-in' });
+    expect(accumulator.metrics.threeBet).toEqual({ numerator: expected, denominator: 1 });
+  });
 });

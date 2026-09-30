@@ -22,8 +22,17 @@ export type ExperienceAccumulator = {
 };
 
 function pair(): MetricPair { return { numerator: 0, denominator: 0 }; }
-function isAggressive(action: PlayerAction): boolean { return action.kind === 'bet-to' || action.kind === 'raise-to' || action.kind === 'all-in'; }
-function isVoluntary(action: PlayerAction): boolean { return action.kind === 'call' || isAggressive(action); }
+function isFullRaiseAction(context: PublicTableContext, action: PlayerAction): boolean {
+  if (action.kind === 'bet-to' || action.kind === 'raise-to') return true;
+  if (action.kind !== 'all-in') return false;
+  const target = context.self.streetContribution + context.self.stack;
+  const increase = target - context.currentBet;
+  return target > context.currentBet && (context.currentBet === 0 || increase >= context.lastFullRaise);
+}
+
+function isVoluntary(action: PlayerAction): boolean {
+  return action.kind === 'call' || action.kind === 'bet-to' || action.kind === 'raise-to' || action.kind === 'all-in';
+}
 
 export function createExperienceAccumulator(): ExperienceAccumulator {
   return {
@@ -55,14 +64,15 @@ export function observeExperienceAction(accumulator: ExperienceAccumulator, cont
       metrics.vpip.denominator += 1;
       metrics.pfr.denominator += 1;
     }
+    const aggressive = isFullRaiseAction(context, action);
     if (isVoluntary(action) && !sample.vpip) { sample.vpip = true; metrics.vpip.numerator += 1; }
-    if (isAggressive(action) && !sample.pfr) { sample.pfr = true; metrics.pfr.numerator += 1; }
+    if (aggressive && !sample.pfr) { sample.pfr = true; metrics.pfr.numerator += 1; }
     const situation = classifyPreflopSituation(context).situation;
-    if (situation === 'FACING_OPEN') { metrics.threeBet.denominator += 1; if (isAggressive(action)) metrics.threeBet.numerator += 1; }
+    if (situation === 'FACING_OPEN') { metrics.threeBet.denominator += 1; if (aggressive) metrics.threeBet.numerator += 1; }
     if (situation === 'FACING_3BET') {
       metrics.fourBet.denominator += 1;
       metrics.foldToThreeBet.denominator += 1;
-      if (isAggressive(action)) metrics.fourBet.numerator += 1;
+      if (aggressive) metrics.fourBet.numerator += 1;
       if (action.kind === 'fold') metrics.foldToThreeBet.numerator += 1;
     }
     metrics.preflopAllIn.denominator += 1;

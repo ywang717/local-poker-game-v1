@@ -41,9 +41,9 @@ the existing `chooseAction` engine through the new complete-hand harness.
 | Metric | Numerator | Denominator |
 | --- | ---: | ---: |
 | VPIP | 47,342 | 59,977 |
-| PFR | 35,888 | 59,977 |
-| 3-Bet | 9,029 | 16,814 |
-| 4-Bet | 8,489 | 17,057 |
+| PFR | 34,049 | 59,977 |
+| 3-Bet | 9,015 | 16,814 |
+| 4-Bet | 8,457 | 17,057 |
 | Fold to 3-Bet | 1,141 | 17,057 |
 | C-Bet | 0 | 0 |
 | Check-Raise | 0 | 0 |
@@ -60,5 +60,7 @@ VPIP and PFR denominators count one pre-flop decision opportunity per player
 per hand. 3-Bet and 4-Bet denominators count decisions facing the prior full
 raise level; the action is classified before it is appended to the history.
 
-The zero C-Bet and Check-Raise denominators are intentional in this minimal
+All-in calls and short all-in raises remain VPIP events but are excluded from
+PFR/3-Bet/4-Bet numerators unless the resulting contribution reaches the full
+raise threshold. The zero C-Bet and Check-Raise denominators are intentional in this minimal
 baseline harness; Task 8 adds board-texture and post-flop event accounting.

@@ -85,3 +85,14 @@ Commit: `ed65fdf7fd0c392b34fbfbf56dc40054c7c08b00` — `feat: add ai v2 context 
 - Corrected baseline metrics: VPIP `47,342/59,977`, PFR `35,888/59,977`,
   3-Bet `9,029/16,814`, and 4-Bet `8,489/17,057`. The complete output remains
   in `docs/ai-balance/BASELINE.md`; action digest remains `58c9c800`.
+
+## Review fix — short all-in aggression boundary
+
+- All-in actions now count as PFR/3-Bet/4-Bet aggression only when the total
+  contribution increases the current bet by at least `lastFullRaise` (or opens
+  an unbet street). All-in calls and non-reopening short all-ins remain VPIP
+  events and do not count as aggression.
+- Added direct regression cases for short all-in calls, short non-reopening
+  raises, and full all-in raises.
+- Regenerated baseline metrics: PFR `34,049/59,977`, 3-Bet `9,015/16,814`,
+  and 4-Bet `8,457/17,057`; digest remains `58c9c800`.
