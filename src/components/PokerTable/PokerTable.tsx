@@ -15,7 +15,7 @@ export function PokerTable({ game }: { game: GameState }) {
     <div className="seat-grid">
       {game.players.map((player) => <article className={`player-seat${game.actingSeat === player.seat ? ' player-seat--acting' : ''}`} key={player.id}>
         <div className="avatar">{player.name.slice(0, 1)}</div>
-        <div><strong>{player.name}</strong><span className="seat-meta">{player.stack.toLocaleString('zh-CN')} 筹码</span></div>
+        <div><strong>{player.name}</strong><span className="seat-meta">{player.stack.toLocaleString('zh-CN')} 筹码</span><span className="seat-contribution">本轮下注 {player.streetContribution.toLocaleString('zh-CN')}</span></div>
         <div className="seat-badges">
           {player.seat === game.dealerSeat && <span>D</span>}
           {player.seat === game.smallBlindSeat && <span>SB</span>}

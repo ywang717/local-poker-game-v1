@@ -40,6 +40,8 @@ describe('Chinese white minimal UI', () => {
     expect(html).toContain('SB');
     expect(html).toContain('BB');
     expect(html).toContain('底池');
+    expect(html).toContain('本轮下注 5');
+    expect(html).toContain('本轮下注 10');
     for (const label of ['弃牌', '过牌', '跟注', '加注', '全下']) expect(html).toContain(label);
     expect(html).toMatch(/disabled="">加注/);
   });
