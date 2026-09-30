@@ -74,6 +74,24 @@ describe('Chinese white minimal UI', () => {
     expect(html).toContain('思考中');
   });
 
+  it('keeps live players and community cards together while hiding folded seats', () => {
+    const table = createTable({
+      mode: 'STANDARD', tableSize: 3, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      players: [
+        { id: 'human', name: '玩家', seat: 0, stack: 100, isHuman: true },
+        { id: 'folded', name: '已弃牌的凯文', seat: 1, stack: 100 },
+        { id: 'live', name: '仍在牌局的杰克', seat: 2, stack: 100 },
+      ],
+    });
+    const started = startHand(table, createDeck('STANDARD'));
+    const state = { ...started, players: started.players.map((player) => player.id === 'folded' ? { ...player, folded: true, status: 'FOLDED' as const } : player) };
+    const html = renderToStaticMarkup(<PokerTable game={state} />);
+    expect(html).toContain('仍在牌局的杰克');
+    expect(html).not.toContain('已弃牌的凯文');
+    expect(html).toContain('class="table-center"');
+    expect(html).toContain('aria-label="公共牌"');
+  });
+
   it('reveals eligible AI hole cards at showdown', () => {
     const table = createTable({
       mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0,

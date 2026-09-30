@@ -18,7 +18,7 @@ export function PokerTable({ game }: { game: GameState }) {
   return <main className="poker-table" aria-label="牌桌">
     <div className="table-header"><span>{game.street === 'PRE_FLOP' ? '翻牌前' : game.street}</span><span>第 {game.handNumber} 手</span></div>
     <div className="seat-grid">
-      {game.players.map((player) => <article className={`player-seat${game.actingSeat === player.seat ? ' player-seat--acting' : ''}${player.folded ? ' player-seat--folded' : ''}`} key={player.id}>
+      {game.players.filter((player) => !player.folded).map((player) => <article className={`player-seat${game.actingSeat === player.seat ? ' player-seat--acting' : ''}`} key={player.id}>
         <div className="avatar">{player.name.slice(0, 1)}</div>
         <div><strong>{player.name}</strong><span className="seat-meta">{player.stack.toLocaleString('zh-CN')} 筹码</span><span className="seat-contribution">本轮下注 {player.streetContribution.toLocaleString('zh-CN')}</span></div>
         <div className="seat-badges">
@@ -26,10 +26,10 @@ export function PokerTable({ game }: { game: GameState }) {
           {player.seat === game.smallBlindSeat && <span>SB</span>}
           {player.seat === game.bigBlindSeat && <span>BB</span>}
         </div>
-        <div className="seat-status">{player.folded ? '弃牌' : player.allIn ? '全下' : game.actingSeat === player.seat && !player.isHuman ? '思考中' : player.status === 'ACTIVE' ? '进行中' : '等待'}</div>
+        <div className="seat-status">{player.allIn ? '全下' : game.actingSeat === player.seat && !player.isHuman ? '思考中' : player.status === 'ACTIVE' ? '进行中' : '等待'}</div>
         {latestActionFor(game, player.id) && <PlayerActionBadge action={latestActionFor(game, player.id)!} />}
-        <div className="hole-cards">{player.isHuman || ((game.street === 'SHOWDOWN' || game.street === 'SETTLEMENT') && !player.folded) ? player.holeCards.map((card) => <PlayingCard card={card} key={card.id} />) : player.holeCards.map((card) => <PlayingCard hidden key={card.id} />)}</div>
-        {showdown && autoShowWinningHand && !player.folded && game.communityCards.length >= 5 && <span className="seat-hand-category">{evaluateHand(player.holeCards, game.communityCards, game.mode).labelZh}</span>}
+        <div className="hole-cards">{player.isHuman || (game.street === 'SHOWDOWN' || game.street === 'SETTLEMENT') ? player.holeCards.map((card) => <PlayingCard card={card} key={card.id} />) : player.holeCards.map((card) => <PlayingCard hidden key={card.id} />)}</div>
+        {showdown && autoShowWinningHand && game.communityCards.length >= 5 && <span className="seat-hand-category">{evaluateHand(player.holeCards, game.communityCards, game.mode).labelZh}</span>}
       </article>)}
     </div>
     <section className="table-center"><CommunityCards cards={game.communityCards} /><PotDisplay game={game} />{showdown && autoShowWinningHand && game.street === 'SETTLEMENT' && <div className="showdown-summary" aria-live="polite">{humanAward > 0 ? `你赢得 ${humanAward.toLocaleString('zh-CN')}` : '本手未获胜'}</div>}</section>
