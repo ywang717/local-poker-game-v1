@@ -40,4 +40,14 @@ describe('game engine state', () => {
     expect(state.communityCards).toHaveLength(5);
     expect(state.players.every((player) => player.allIn)).toBe(true);
   });
+
+  it('gives separate human table sessions unique hand ids', () => {
+    const config: TableConfig = {
+      mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10,
+      players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }],
+    };
+    const first = startHand(createTable(config), createDeck('STANDARD'));
+    const second = startHand(createTable(config), createDeck('STANDARD'));
+    expect(first.handId).not.toBe(second.handId);
+  });
 });

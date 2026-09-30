@@ -4,6 +4,14 @@ import { blindSeats, getActionOrder } from './dealer';
 import type { GameMode } from './rules';
 import type { GameState, TableConfig, TransitionResult } from './gameState';
 
+let fallbackHandIdSequence = 0;
+
+function handIdFor(state: GameState): string {
+  if (!state.players.some((player) => player.isHuman)) return `hand-${state.handNumber + 1}`;
+  const uniqueId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${fallbackHandIdSequence += 1}`;
+  return `hand-${uniqueId}`;
+}
+
 function assertPositiveInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`${label} must be a positive integer`);
 }
@@ -82,7 +90,7 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
   validateDeck(state, deck);
   const next: GameState = {
     ...state,
-    handId: `hand-${state.handNumber + 1}`,
+    handId: handIdFor(state),
     handNumber: state.handNumber + 1,
     street: 'PRE_FLOP',
     deck: [...deck],

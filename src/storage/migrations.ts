@@ -26,7 +26,7 @@ export function migrateSave(data: unknown): VersionedSave {
     lowestFunds: Number.isSafeInteger(legacyFunds) && legacyFunds >= 0 ? legacyFunds : base.lowestFunds,
     bankruptcyCount: typeof data.bankruptcies === 'number' && Number.isSafeInteger(data.bankruptcies) && data.bankruptcies >= 0 ? data.bankruptcies : 0,
     unlockedLevels: Array.isArray(data.unlockedLevels) ? data.unlockedLevels.filter((level): level is 1 | 2 | 3 | 4 | 5 => [1, 2, 3, 4, 5].includes(level as number)) : [1],
-    handHistory: Array.isArray(data.handHistory) ? structuredClone(data.handHistory) as CareerState['handHistory'] : [],
+    handHistory: Array.isArray(data.handHistory) ? (structuredClone(data.handHistory) as CareerState['handHistory']).map((entry) => ({ ...entry, potResults: entry.potResults ?? [] })) : [],
   };
   return { saveVersion: CURRENT_SAVE_VERSION, career };
 }

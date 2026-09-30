@@ -5,6 +5,11 @@ import type { TableLevelId } from './tableLevels';
 
 export const HAND_HISTORY_LIMIT = 500;
 export type HandResult = 'WIN' | 'LOSS' | 'SPLIT' | 'FOLD';
+export type PotReview = {
+  amount: number;
+  winnerPlayerIds: string[];
+  awards: { playerId: string; amount: number }[];
+};
 
 export type HandSummary = {
   handId: string;
@@ -23,6 +28,7 @@ export type HandSummary = {
   playerNet: number;
   result: HandResult;
   actionHistory: ActionRecord[];
+  potResults?: PotReview[];
   allIn?: boolean;
   allInWon?: boolean;
   vpip?: boolean;
@@ -36,5 +42,6 @@ export function appendHandHistory(history: readonly HandSummary[], entry: HandSu
     playerHoleCards: [...entry.playerHoleCards],
     communityCards: [...entry.communityCards],
     actionHistory: entry.actionHistory.map((record) => ({ ...record })),
+    potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
   }, ...history].slice(0, HAND_HISTORY_LIMIT);
 }

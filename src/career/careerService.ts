@@ -17,7 +17,7 @@ function cloneCareer(career: CareerState): CareerState {
       byPlayerCount: Object.fromEntries(Object.entries(career.statistics.byPlayerCount).map(([key, value]) => [key, { ...value }])) as CareerState['statistics']['byPlayerCount'],
       byLevel: Object.fromEntries(Object.entries(career.statistics.byLevel).map(([key, value]) => [key, { ...value }])) as CareerState['statistics']['byLevel'],
     },
-    handHistory: career.handHistory.map((entry) => ({ ...entry, playerHoleCards: [...entry.playerHoleCards], communityCards: [...entry.communityCards], actionHistory: entry.actionHistory.map((record) => ({ ...record })) })),
+    handHistory: career.handHistory.map((entry) => ({ ...entry, playerHoleCards: [...entry.playerHoleCards], communityCards: [...entry.communityCards], actionHistory: entry.actionHistory.map((record) => ({ ...record })), potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })) })),
     recordedHandIds: [...career.recordedHandIds],
   };
 }

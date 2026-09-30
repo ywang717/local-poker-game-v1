@@ -20,6 +20,11 @@ describe('save migrations', () => {
     expect(migrated.career.unlockedLevels).toEqual([1, 2]);
   });
 
+  it('defaults legacy hand records without pot results to an empty list', () => {
+    const migrated = migrateSave({ saveVersion: 0, nickname: '旧玩家', handHistory: [{ handId: 'h1' }] });
+    expect(migrated.career.handHistory[0].potResults).toEqual([]);
+  });
+
   it('accepts current version data without mutating it', () => {
     const input = { saveVersion: 1, career: { nickname: '当前玩家', currentFunds: 10_000 } };
     expect(migrateSave(input)).toEqual(input);

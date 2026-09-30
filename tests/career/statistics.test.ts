@@ -57,4 +57,10 @@ describe('career statistics and hand history', () => {
     expect(career.handHistory[0].handId).toBe('hand-501');
     expect(career.handHistory.at(-1)?.handId).toBe('hand-2');
   });
+
+  it('preserves per-pot winners and awards for the previous-hand review', () => {
+    const potResults = [{ amount: 120, winnerPlayerIds: ['hero'], awards: [{ playerId: 'hero', amount: 120 }] }];
+    const career = recordHand(createCareer('玩家'), summary(2, { potResults }));
+    expect(career.handHistory[0].potResults).toEqual(potResults);
+  });
 });
