@@ -136,3 +136,9 @@ follow-up commit:
   deadlocks, illegal actions, negative chips, unclaimed pots, refund errors,
   or chip-conservation failures. Digests: `9b17cdba`, `8feb2320`, `0dd3f7e5`,
   `60493447`, `be3b795d`, `5a751404`.
+
+The final cleanup also removes the synthetic equity compatibility helper,
+passes the difficulty profile's fixed simulation budget into post-flop
+analysis, and applies a small explicit MINI_TOURNAMENT pressure adjustment when
+no tournament context object is supplied. Targeted AI tests (16 files, 87
+tests) and typecheck pass after this cleanup.

@@ -65,13 +65,6 @@ export function boundedPublicEquity(input: PostflopDecisionInput, budget: number
   return total / samples;
 }
 
-/** Kept as a compatibility alias for callers using the initial Task 3 name. */
-export function boundedMonteCarloEquity(madeStrength: number, drawPotential: number, budget: number): number {
-  const samples = Math.max(0, Math.min(64, Math.floor(budget)));
-  if (samples === 0) return Math.max(0, Math.min(1, madeStrength + drawPotential * 0.15));
-  return Math.max(0, Math.min(1, madeStrength + drawPotential * (0.1 + Math.min(1, samples / 64) * 0.2)));
-}
-
 export function decidePostflopV2(input: PostflopDecisionInput): PostflopAction {
   const analysis = analyzePostflopV2(input);
   const textureAdjustment = analysis.texture === 'WET' || analysis.texture === 'CONNECTED' ? -0.08 : analysis.texture === 'DRY' ? 0.04 : 0;
