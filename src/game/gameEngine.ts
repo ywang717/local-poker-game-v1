@@ -1,6 +1,6 @@
 import { createDeck } from './cards';
 import { applyAction as applyBettingAction, advanceStreet, getLegalActions } from './betting';
-import { blindSeats, getActionOrder } from './dealer';
+import { blindSeats, blindSeatsForPlayers, getActionOrder, getActionOrderForPlayers } from './dealer';
 import type { GameMode } from './rules';
 import type { GameState, TableConfig, TransitionResult } from './gameState';
 import { createMatchSession } from '../match/session';
@@ -133,13 +133,18 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
   next.initialOccupiedSeats = [...(state.initialOccupiedSeats ?? state.players.map((player) => player.seat))];
   const activePlayers = next.players.filter((player) => player.stack > 0);
   if (activePlayers.length < 2) throw new Error('At least two players with chips are required');
-  const seats = blindSeats(next.tableSize, next.dealerSeat);
+  const dynamicSeats = next.matchType === 'MINI_TOURNAMENT' || next.session?.matchType === 'MINI_TOURNAMENT';
+  const seats = !dynamicSeats || activePlayers.length === next.tableSize
+    ? blindSeats(next.tableSize, next.dealerSeat)
+    : blindSeatsForPlayers(activePlayers, next.dealerSeat);
   next.smallBlindSeat = seats.smallBlindSeat;
   next.bigBlindSeat = seats.bigBlindSeat;
   postBlind(next, seats.smallBlindSeat, next.smallBlind);
   postBlind(next, seats.bigBlindSeat, next.bigBlind);
 
-  const dealOrder = getActionOrder(next.tableSize, next.dealerSeat, 'FLOP')
+  const dealOrder = (!dynamicSeats || activePlayers.length === next.tableSize
+    ? getActionOrder(next.tableSize, next.dealerSeat, 'FLOP')
+    : getActionOrderForPlayers(activePlayers, next.dealerSeat, 'FLOP'))
     .map((seat) => next.players.find((player) => player.seat === seat))
     .filter((player): player is GameState['players'][number] => Boolean(player && !player.folded));
   for (let round = 0; round < 2; round += 1) {
@@ -148,7 +153,9 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
   // The pre-flop bring-in is the full big blind even when the BB is short
   // stacked and can only post part of it.
   next.currentBet = next.bigBlind;
-  next.actingSeat = getActionOrder(next.tableSize, next.dealerSeat, 'PRE_FLOP')
+  next.actingSeat = (!dynamicSeats || activePlayers.length === next.tableSize
+    ? getActionOrder(next.tableSize, next.dealerSeat, 'PRE_FLOP')
+    : getActionOrderForPlayers(activePlayers, next.dealerSeat, 'PRE_FLOP'))
     .map((seat) => next.players.find((player) => player.seat === seat))
     .find((player): player is GameState['players'][number] => Boolean(player && !player.folded && !player.allIn))?.seat ?? null;
   return next.actingSeat === null ? advanceStreet(next) : next;

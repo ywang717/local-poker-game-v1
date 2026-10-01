@@ -4,6 +4,7 @@ import { getDifficultyProfile, type AIDifficulty } from './difficulty';
 import { PERSONALITIES } from './personalities';
 import { toPublicContext } from './publicContext';
 import type { PlayerModel } from './playerModel';
+import { applyShortStackStrategy, buildTournamentDecisionOptions } from './tournamentStrategy';
 
 /** Map the table's configured big blind to the five career AI levels. */
 export function difficultyForBigBlind(bigBlind: number): AIDifficulty {
@@ -35,11 +36,17 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   const liveStacks = state.players.filter((player) => !player.folded && player.id !== actor.id).map((player) => player.stack);
   const effectiveStackBB = Math.min(actor.stack, ...liveStacks.filter((stack) => Number.isFinite(stack))) / Math.max(1, state.bigBlind);
   const playersRemaining = state.players.filter((player) => !player.folded).length;
+  const tournamentOptions = matchType === 'MINI_TOURNAMENT'
+    ? buildTournamentDecisionOptions(state, actor.id, { effectiveStackBB, playersRemaining, entryLevel: state.tableLevel ?? difficulty, blindLevel: (state as GameStateWithTournament).tournamentBlindLevel ?? 1, handsAtLevel: (state as GameStateWithTournament).tournamentHandsAtLevel ?? 0 })
+    : undefined;
+  const action = chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng, tournamentOptions ?? {
+    matchType,
+    tournament: matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB, stackBB: actor.stack / Math.max(1, state.bigBlind), blindLevel: state.tableLevel ?? state.session?.tableLevel ?? difficulty, playersRemaining, handsAtLevel: state.handNumber } : undefined,
+  });
   return {
     playerId: actor.id,
-    action: chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng, {
-      matchType,
-      tournament: matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB, stackBB: actor.stack / Math.max(1, state.bigBlind), blindLevel: state.tableLevel ?? state.session?.tableLevel ?? difficulty, playersRemaining, handsAtLevel: state.handNumber } : undefined,
-    }),
+    action: tournamentOptions ? applyShortStackStrategy(action, tournamentOptions.tournament!, context.legalActions) : action,
   };
 }
+
+type GameStateWithTournament = GameState & { tournamentBlindLevel?: number; tournamentHandsAtLevel?: number };

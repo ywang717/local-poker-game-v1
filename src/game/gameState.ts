@@ -82,6 +82,10 @@ export type GameState = {
   sessionId?: string;
   matchType?: MatchType;
   tableLevel?: TableLevelId;
+  /** Mini-tournament metadata; absent on legacy/cash snapshots. */
+  tournamentBlindLevel?: number;
+  tournamentHandsAtLevel?: number;
+  tournamentPlayersRemaining?: number;
   session?: MatchSession;
   handId: string | null;
   handNumber: number;
