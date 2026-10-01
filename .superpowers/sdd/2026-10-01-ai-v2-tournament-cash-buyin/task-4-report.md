@@ -31,3 +31,11 @@ Verification: `npm run test:cash-buyin` (12 passed), `npm run typecheck`, and fu
 - Added game-store zero-stack choice coverage for confirmed rebuy continuation and explicit leave.
 
 Verification: `npm run test:cash-buyin` (14 passed), `npm run typecheck`, and full `npm test` (229 passed).
+
+## Integration-boundary fixes (2026-10-01)
+
+- Added public store integration fixtures for every street/all-in state. Tests call `requestCashBuyIn`, `applyPendingCashBuyIn`, `syncActiveTableStack`, and `createNextHand`, asserting the stored current hand remains unchanged and only the next hand receives chips.
+- Added public `requestLeave` plus career-store cancellation coverage with exactly-once refund semantics.
+- Added zero-stack store choice coverage that confirms a pending rebuy produces a positive next-hand stack without bankruptcy, while explicit LEAVE marks the leave path.
+
+Verification: `npm run test:cash-buyin` (20 passed) and `npm run typecheck` passed.

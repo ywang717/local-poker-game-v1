@@ -6,6 +6,7 @@ import { createTable, startHand } from '../../src/game/gameEngine';
 import { createDeck, shuffleDeck } from '../../src/game/cards';
 import { useCareerStore } from '../../src/store/careerStore';
 import { useGameStore } from '../../src/store/gameStore';
+import { createNextHand } from '../../src/App';
 
 describe('cash table buy-ins', () => {
   it('offers standard targets and reserves only the required amount', () => {
@@ -95,8 +96,49 @@ describe('cash table buy-ins', () => {
     expect(useGameStore.getState().zeroStackChoice).toBe(true);
     useGameStore.getState().chooseZeroStack('REBUY');
     expect(useGameStore.getState().game).toBe(settled);
+    useCareerStore.getState().setCareer({ ...createCareer('P'), activeTableStack: 0 });
+    const pending = useCareerStore.getState().requestCashBuyIn(cashSession('STANDARD', 1, 'zero-store'), 5_000);
+    const applied = useCareerStore.getState().applyPendingCashBuyIn(pending.pending, 0);
+    const next = { ...settled, players: settled.players.map((p) => p.isHuman ? { ...p, stack: applied.appliedAmount } : p) };
+    expect(next.players.find((p) => p.isHuman)?.stack).toBeGreaterThan(0);
+    expect(useCareerStore.getState().career?.bankruptcyCount).toBe(0);
     useGameStore.getState().chooseZeroStack('LEAVE');
     expect(useGameStore.getState().leaveRequested).toBe(true);
     useGameStore.getState().setGame(null);
+    useCareerStore.getState().setCareer(null);
+  });
+
+  it.each(['PRE_FLOP', 'FLOP', 'TURN', 'RIVER', 'ALL_IN'] as const)('runs public store request and next-hand transition for %s', (street) => {
+    const career = { ...createCareer('P'), activeTableStack: 900 };
+    const session = cashSession('STANDARD', 1, `store-${street}`);
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, session, players: [{ id: 'human', seat: 0, stack: 900, isHuman: true }, { id: 'ai', seat: 1, stack: 1_000 }] });
+    const started = startHand(table, shuffleDeck(createDeck('STANDARD')));
+    const settled = { ...started, street: 'SETTLEMENT' as const, players: started.players.map((p) => p.isHuman ? { ...p, stack: 900 } : p) };
+    useCareerStore.getState().setCareer(career);
+    useGameStore.getState().setGame({ ...settled, street: street === 'ALL_IN' ? 'SETTLEMENT' as const : street });
+    const request = useCareerStore.getState().requestCashBuyIn(session, 2_000);
+    const snapshot = structuredClone(useGameStore.getState().game);
+    const applied = useCareerStore.getState().applyPendingCashBuyIn(request.pending, 900);
+    useCareerStore.getState().syncActiveTableStack(2_000);
+    const next = createNextHand({ ...settled, players: settled.players.map((p) => p.isHuman ? { ...p, stack: p.stack + applied.appliedAmount } : p) });
+    expect(useGameStore.getState().game).toEqual(snapshot);
+    expect(next.players.find((p) => p.isHuman)?.stack).toBeGreaterThan(900);
+    useCareerStore.getState().setCareer(null); useGameStore.getState().setGame(null);
+  });
+
+  it('uses public leave request and cancellation boundary without double refund', () => {
+    const career = { ...createCareer('P'), activeTableStack: 900 };
+    const session = cashSession('STANDARD', 1, 'public-leave');
+    useCareerStore.getState().setCareer(career);
+    const request = useCareerStore.getState().requestCashBuyIn(session, 2_000);
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, session, players: [{ id: 'human', seat: 0, stack: 900, isHuman: true }, { id: 'ai', seat: 1, stack: 1_000 }] });
+    useGameStore.getState().setGame({ ...startHand(table, shuffleDeck(createDeck('STANDARD'))), street: 'SETTLEMENT' as const });
+    expect(useGameStore.getState().requestLeave()).toBe('IMMEDIATE');
+    useCareerStore.getState().cancelPendingCashBuyIn(request.pending.transactionId);
+    const refunded = useCareerStore.getState().career!;
+    useCareerStore.getState().cancelPendingCashBuyIn(request.pending.transactionId);
+    expect(useCareerStore.getState().career!.currentFunds).toBe(refunded.currentFunds);
+    expect(refunded.pendingCashBuyIns.find((p) => p.transactionId === request.pending.transactionId)?.status).toBe('REFUNDED');
+    useCareerStore.getState().setCareer(null);
   });
 });
