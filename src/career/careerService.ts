@@ -12,6 +12,17 @@ import type { FinancialTransaction } from './transactionTypes';
 
 const MINIMUM_FUNDS = 5_000;
 
+function makeCashSessionId(): string {
+  return `cash-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+}
+
+function appendTransaction(career: CareerState, transaction: FinancialTransaction): void {
+  career.financialTransactions ??= [];
+  if (!career.financialTransactions.some((entry) => entry.transactionId === transaction.transactionId)) {
+    career.financialTransactions.push(transaction);
+  }
+}
+
 function cloneCareer(career: CareerState): CareerState {
   return {
     ...career,
@@ -55,6 +66,7 @@ export function createCareer(nickname: string): CareerState {
     peakFunds: 10_000,
     lowestFunds: 10_000,
     activeTableStack: null,
+    activeTableSessionId: null,
     defaultMode: 'STANDARD',
     defaultTableSize: 6,
     unlockedLevels: [1],
@@ -139,29 +151,62 @@ export type BuyInResult = {
   career: CareerState;
   tableStack: number;
   level: TableLevel;
+  sessionId: string;
 };
 
-export function buyIn(career: CareerState, levelId: TableLevelId): BuyInResult {
+export function buyIn(career: CareerState, levelId: TableLevelId, requestedSessionId?: string): BuyInResult {
   const level = getTableLevel(levelId);
   if (!career.unlockedLevels.includes(level.id)) throw new Error('Table level is locked');
   if (career.activeTableStack !== null) throw new Error('Career is already seated at a table');
   if (career.currentFunds < level.buyIn) throw new Error('Insufficient career funds for buy-in');
+  const sessionId = requestedSessionId ?? makeCashSessionId();
+  if (!sessionId) throw new Error('Cash session ID is required');
+  const initialTransactionId = `${sessionId}:initial-buy-in`;
+  if (career.financialTransactions?.some((entry) => entry.transactionId === initialTransactionId)) throw new Error('Duplicate transaction ID');
   const next = cloneCareer(career);
   next.currentFunds -= level.buyIn;
   next.activeTableStack = level.buyIn;
+  next.activeTableSessionId = sessionId;
+  appendTransaction(next, {
+    transactionId: initialTransactionId,
+    sessionId,
+    kind: 'INITIAL_BUY_IN',
+    amount: level.buyIn,
+    status: 'APPLIED',
+    createdAt: new Date().toISOString(),
+  });
   refreshFinancialMarkers(next);
-  return { career: next, tableStack: level.buyIn, level };
+  return { career: next, tableStack: level.buyIn, level, sessionId };
 }
 
-export function leaveTable(career: CareerState, tableStack: number): CareerState {
+export function leaveTable(career: CareerState, tableStack: number, requestedSessionId?: string): CareerState {
   if (!Number.isSafeInteger(tableStack) || tableStack < 0) throw new Error('Table stack must be a non-negative integer');
   if (career.activeTableStack === null) {
     if (tableStack !== 0) throw new Error('Career is not seated at a table');
     return refreshFinancialMarkers(cloneCareer(career));
   }
   const next = cloneCareer(career);
+  const sessionId = requestedSessionId
+    ?? career.activeTableSessionId
+    ?? career.financialTransactions?.find((entry) => entry.kind === 'INITIAL_BUY_IN' && entry.status === 'APPLIED')?.sessionId
+    ?? `legacy-cash-${career.createdAt}`;
+  const cashOutTransactionId = `${sessionId}:table-cash-out`;
+  if (career.financialTransactions?.some((entry) => entry.transactionId === cashOutTransactionId)) {
+    next.activeTableStack = null;
+    next.activeTableSessionId = null;
+    return refreshFinancialMarkers(next);
+  }
+  appendTransaction(next, {
+    transactionId: cashOutTransactionId,
+    sessionId,
+    kind: 'TABLE_CASH_OUT',
+    amount: tableStack,
+    status: 'APPLIED',
+    createdAt: new Date().toISOString(),
+  });
   next.currentFunds += tableStack;
   next.activeTableStack = null;
+  next.activeTableSessionId = null;
   return refreshFinancialMarkers(next);
 }
 

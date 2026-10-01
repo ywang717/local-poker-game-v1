@@ -7,6 +7,10 @@ export type TransactionResult = { career: CareerState; pending: PendingCashBuyIn
 function clone<T>(v: T): T { return structuredClone(v); }
 function validAmount(amount: number): boolean { return Number.isSafeInteger(amount) && amount > 0; }
 function ensureLedger(career: CareerState): CareerState { return { ...career, financialTransactions: career.financialTransactions ?? [], pendingCashBuyIns: career.pendingCashBuyIns ?? [] }; }
+function appendRefundTransaction(career: CareerState, pending: PendingCashBuyIn, amount: number): void {
+  if (amount <= 0 || career.financialTransactions.some((entry) => entry.transactionId === `${pending.transactionId}:refund`)) return;
+  career.financialTransactions.push({ transactionId: `${pending.transactionId}:refund`, sessionId: pending.sessionId, kind: 'BUY_IN_REFUND', amount, status: 'APPLIED', createdAt: new Date().toISOString() });
+}
 export function reserveFunds(career: CareerState, request: ReserveRequest): TransactionResult {
   const amount = request.requestedAmount ?? request.amount;
   if (!request.transactionId || !request.sessionId) throw new Error('Transaction and session IDs are required');
@@ -29,6 +33,7 @@ export function refundPendingCashBuyIn(career: CareerState, transactionId: strin
   if (!pending || pending.status !== 'PENDING') return source;
   if (!validAmount(pending.reservedAmount) || !validAmount(pending.requestedAmount)) throw new Error('Invalid pending cash buy-in amount');
   pending.status = 'REFUNDED'; source.currentFunds += pending.reservedAmount;
+  appendRefundTransaction(source, pending, pending.reservedAmount);
   const tx = source.financialTransactions.find((t) => t.transactionId === transactionId);
   if (tx) tx.status = 'REFUNDED';
   return source;

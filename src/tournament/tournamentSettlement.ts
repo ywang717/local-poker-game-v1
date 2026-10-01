@@ -7,9 +7,9 @@ function cloneState(state: TournamentState): TournamentState {
 /** Finish exactly when one player remains and guard the champion reward. */
 export function finishTournament(input: TournamentState): TournamentFinishResult {
   const state = cloneState(input);
-  const champion = state.championId
-    ? state.players.find((player) => player.id === state.championId) ?? input.players.find((player) => player.id === state.championId)
-    : state.players.length === 1 ? state.players[0] : undefined;
+  if (state.players.length !== 1) throw new Error('Tournament must have exactly one remaining player');
+  const champion = state.players[0];
+  if (state.championId && state.championId !== champion.id) throw new Error('Tournament champion does not match the remaining player');
   if (!champion) throw new Error('Tournament must have exactly one remaining player');
   state.championId = champion.id;
   state.players = state.players.filter((player) => player.id === champion.id);

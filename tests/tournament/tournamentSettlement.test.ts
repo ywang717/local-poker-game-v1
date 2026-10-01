@@ -23,4 +23,9 @@ describe('mini tournament settlement', () => {
     expect(result.rewardTransaction).toBeUndefined();
     expect(result.state.rewardPaid).toBe(true);
   });
+
+  it('rejects a preset champion while multiple players are still live', () => {
+    const state = startTournament({ tournamentId: 't-multi-live', mode: 'STANDARD', tableLevel: 1, humanId: 'hero' });
+    expect(() => finishTournament({ ...state, championId: 'hero' })).toThrow(/exactly one remaining player/i);
+  });
 });

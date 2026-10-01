@@ -19,6 +19,18 @@ function ledger(career: CareerState): CareerState {
   next.pendingCashBuyIns = next.pendingCashBuyIns ?? [];
   return next;
 }
+function appendRefundTransaction(career: CareerState, pending: PendingCashBuyIn, amount: number): void {
+  if (amount <= 0 || career.financialTransactions.some((entry) => entry.transactionId === `${pending.transactionId}:refund`)) return;
+  const transaction: FinancialTransaction = {
+    transactionId: `${pending.transactionId}:refund`,
+    sessionId: pending.sessionId,
+    kind: 'BUY_IN_REFUND',
+    amount,
+    status: 'APPLIED',
+    createdAt: new Date().toISOString(),
+  };
+  career.financialTransactions.push(transaction);
+}
 function makeId(): string { return globalThis.crypto?.randomUUID?.() ?? `cash-buyin-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 
 export function getCashBuyInOptions(tableLevel: TableLevelId, tableStack: number, currentFunds: number, customTargetStack?: number): CashBuyInOption[] {
@@ -79,6 +91,7 @@ export function applyPendingCashBuyIn(career: CareerState, pending: PendingCashB
   const appliedAmount = Math.min(stored.requestedAmount, maxAdditional);
   const refundedAmount = stored.reservedAmount - appliedAmount;
   source.currentFunds += refundedAmount;
+  appendRefundTransaction(source, stored, refundedAmount);
   stored.status = 'APPLIED'; stored.appliedAmount = appliedAmount; stored.refundedAmount = refundedAmount;
   const tx = source.financialTransactions.find((entry) => entry.transactionId === stored.transactionId);
   if (tx) tx.status = 'APPLIED';
@@ -92,6 +105,7 @@ export function cancelPendingCashBuyIn(career: CareerState, transactionId: strin
   if (!safePositive(pending.reservedAmount)) throw new Error('Invalid pending cash buy-in amount');
   pending.status = 'REFUNDED'; pending.refundedAmount = pending.reservedAmount;
   source.currentFunds += pending.reservedAmount;
+  appendRefundTransaction(source, pending, pending.reservedAmount);
   const tx = source.financialTransactions.find((entry) => entry.transactionId === transactionId);
   if (tx) tx.status = 'REFUNDED';
   return source;

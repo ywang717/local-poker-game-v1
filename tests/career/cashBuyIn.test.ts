@@ -26,6 +26,9 @@ describe('cash table buy-ins', () => {
     expect(applied.appliedAmount).toBe(100);
     expect(applied.refundedAmount).toBe(4_900);
     expect(applied.career.currentFunds).toBe(9_900);
+    expect(applied.career.financialTransactions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ transactionId: `${request.pending.transactionId}:refund`, sessionId: 's1', kind: 'BUY_IN_REFUND', amount: 4_900, status: 'APPLIED' }),
+    ]));
     expect(applyPendingCashBuyIn(applied.career, request.pending, 4_900).career.currentFunds).toBe(9_900);
   });
 
@@ -34,6 +37,9 @@ describe('cash table buy-ins', () => {
     const request = requestCashBuyIn(career, cashSession('STANDARD', 1, 's1'), 2_000);
     const cancelled = cancelPendingCashBuyIn(request.career, request.pending.transactionId);
     expect(cancelled.currentFunds).toBe(career.currentFunds);
+    expect(cancelled.financialTransactions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ transactionId: `${request.pending.transactionId}:refund`, sessionId: 's1', kind: 'BUY_IN_REFUND', amount: 1_000, status: 'APPLIED' }),
+    ]));
     expect(cancelPendingCashBuyIn(cancelled, request.pending.transactionId).currentFunds).toBe(career.currentFunds);
   });
 

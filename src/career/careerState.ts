@@ -14,6 +14,8 @@ export type CareerState = {
   peakFunds: number;
   lowestFunds: number;
   activeTableStack: number | null;
+  /** Stable identity for the currently seated cash table, when present. */
+  activeTableSessionId?: string | null;
   defaultMode: GameMode;
   defaultTableSize: TableSize;
   unlockedLevels: TableLevelId[];

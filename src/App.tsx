@@ -51,7 +51,7 @@ export function finishTableExitTransition(career: CareerState, tableState: GameS
     next = cancelPendingCashBuyIn(next, pending.transactionId);
   }
   const human = tableState.players.find((player) => player.isHuman);
-  return leaveTable(next, human?.stack ?? 0);
+  return leaveTable(next, human?.stack ?? 0, tableState.sessionId);
 }
 
 function levelForBigBlind(bigBlind: number): TableLevelId {
@@ -238,7 +238,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const human = { id: 'human', name: currentCareer.nickname, seat: 0, stack: buyInResult.tableStack, isHuman: true };
     const aiNames = selectAiNames(tableSize - 1);
     const players = Array.from({ length: tableSize }, (_, seat) => seat === 0 ? human : { id: `ai-${seat}`, name: aiNames[seat - 1], seat, stack: buyInResult.level.buyIn });
-    const table = createTable({ mode, tableSize, smallBlind: buyInResult.level.smallBlind, bigBlind: buyInResult.level.bigBlind, players, dealerSeat: 0, matchType: 'CASH', tableLevel: level });
+    const table = createTable({ mode, tableSize, smallBlind: buyInResult.level.smallBlind, bigBlind: buyInResult.level.bigBlind, players, dealerSeat: 0, sessionId: buyInResult.sessionId, matchType: 'CASH', tableLevel: level });
     setGame(startHand(table, shuffleDeck(createDeck(mode))));
     setView('GAME');
   };

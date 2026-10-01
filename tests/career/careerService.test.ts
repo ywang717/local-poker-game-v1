@@ -22,12 +22,21 @@ describe('career economy and table unlocks', () => {
 
   it('transfers a buy-in out of the career account and returns the exact table stack', () => {
     const career = createCareer('玩家');
-    const entered = buyIn(career, 1);
+    const entered = buyIn(career, 1, 'cash-session-1');
     expect(entered.tableStack).toBe(5_000);
     expect(entered.career.currentFunds).toBe(5_000);
-    const left = leaveTable(entered.career, 2_740);
+    expect(entered.career.financialTransactions).toEqual([
+      expect.objectContaining({ transactionId: 'cash-session-1:initial-buy-in', sessionId: 'cash-session-1', kind: 'INITIAL_BUY_IN', amount: 5_000, status: 'APPLIED' }),
+    ]);
+    const left = leaveTable(entered.career, 2_740, 'cash-session-1');
     expect(left.currentFunds).toBe(7_740);
     expect(left.activeTableStack).toBeNull();
+    expect(left.financialTransactions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ transactionId: 'cash-session-1:table-cash-out', sessionId: 'cash-session-1', kind: 'TABLE_CASH_OUT', amount: 2_740, status: 'APPLIED' }),
+    ]));
+    const retried = leaveTable({ ...left, activeTableStack: 2_740, activeTableSessionId: 'cash-session-1' }, 2_740, 'cash-session-1');
+    expect(retried.currentFunds).toBe(left.currentFunds);
+    expect(retried.financialTransactions.filter((entry) => entry.kind === 'TABLE_CASH_OUT')).toHaveLength(1);
     expect(leaveTable(left, 0).currentFunds).toBe(7_740);
     expect(() => leaveTable(left, 1)).toThrow(/not seated/i);
   });

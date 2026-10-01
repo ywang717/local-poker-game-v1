@@ -29,6 +29,7 @@ describe('table exit and save recovery', () => {
     const career = buyIn(createCareer('测试玩家'), 1).career;
     const table = createTable({
       mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, dealerSeat: 0,
+      sessionId: career.activeTableSessionId!, matchType: 'CASH', tableLevel: 1,
       players: [{ id: 'human', name: '测试玩家', seat: 0, stack: 5_000, isHuman: true }, { id: 'ai', name: 'AI', seat: 1, stack: 5_000 }],
     });
     const game = { ...startHand(table, createDeck('STANDARD')), street: 'SETTLEMENT' as const };
@@ -52,6 +53,10 @@ describe('table exit and save recovery', () => {
     expect(host.querySelector('.hero-stat')).not.toBeNull();
     expect(useGameStore.getState().game).toBeNull();
     expect(useCareerStore.getState().career?.activeTableStack).toBeNull();
+    expect(useCareerStore.getState().career?.financialTransactions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'INITIAL_BUY_IN', amount: 5_000 }),
+      expect.objectContaining({ kind: 'TABLE_CASH_OUT', amount: 4_975, sessionId: career.activeTableSessionId }),
+    ]));
     expect(await loadHandSnapshot()).toBeNull();
   });
 });

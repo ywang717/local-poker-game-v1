@@ -15,6 +15,7 @@ function normalizeCareer(input: Record<string, any>): CareerState {
   const base = createCareer(typeof input.nickname === 'string' && input.nickname.trim() ? input.nickname : '玩家');
   const career = { ...base, ...structuredClone(input) } as CareerState;
   career.saveVersion = CURRENT_SAVE_VERSION;
+  career.activeTableSessionId = typeof input.activeTableSessionId === 'string' && input.activeTableSessionId ? input.activeTableSessionId : (career.activeTableSessionId ?? null);
   career.financialTransactions = Array.isArray(input.financialTransactions) ? structuredClone(input.financialTransactions) : [];
   career.pendingCashBuyIns = Array.isArray(input.pendingCashBuyIns) ? structuredClone(input.pendingCashBuyIns) : [];
   career.tournamentStatistics = isObject(input.tournamentStatistics) ? { ...createEmptyTournamentStatistics(), ...structuredClone(input.tournamentStatistics) } : createEmptyTournamentStatistics();
