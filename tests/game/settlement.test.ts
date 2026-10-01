@@ -69,6 +69,17 @@ describe('pot settlement', () => {
     expect(result.pots[0].winnerPlayerIds).toEqual(['b']);
   });
 
+  it('awards folded contribution layers to the sole short-all-in survivor', () => {
+    const pots = buildPots([
+      contribution('short', 0, 2),
+      contribution('folder-a', 1, 5, true),
+      contribution('folder-b', 2, 10, true),
+    ]);
+    const result = settlePots(pots, [player('short', 0), player('folder-a', 1, true), player('folder-b', 2, true)], {}, 0);
+    expect(result.awards.reduce((sum, award) => sum + award.amount, 0)).toBe(result.totalPot);
+    expect(result.awards.every((award) => award.playerId === 'short')).toBe(true);
+  });
+
   it('splits exact ties and gives odd chips from the dealer-left seat clockwise', () => {
     const pots = buildPots([
       contribution('a', 0, 5),

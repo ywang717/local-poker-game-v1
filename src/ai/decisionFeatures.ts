@@ -29,3 +29,5 @@ export function selectBetFraction({
   if (intent === 'SEMI_BLUFF') return 0.5;
   return street === 'RIVER' ? 0.75 : 0.66;
 }
+
+export function clampProbability(value: number): number { return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)); }

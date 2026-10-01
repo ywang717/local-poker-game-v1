@@ -24,13 +24,18 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   if (state.actingSeat === null || state.street === 'SHOWDOWN' || state.street === 'SETTLEMENT') return null;
   const actor = state.players.find((player) => player.seat === state.actingSeat);
   if (!actor || actor.isHuman || actor.folded || actor.allIn) return null;
-  const difficulty = difficultyForBigBlind(state.bigBlind);
+  // V2 difficulty is an explicit table/session setting. The blind fallback is
+  // retained only for old snapshots that predate session metadata.
+  const difficulty = state.tableLevel ?? state.session?.tableLevel ?? difficultyForBigBlind(state.bigBlind);
   // Reading the profile here makes the mapping explicit and ensures an
   // invalid future level cannot silently reach the decision engine.
   getDifficultyProfile(difficulty);
   const context = toPublicContext(state, actor.id, opponentModels);
   return {
     playerId: actor.id,
-    action: chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng),
+    action: chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng, {
+      matchType: state.matchType ?? state.session?.matchType,
+      tournament: state.matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB: actor.stack / Math.max(1, state.bigBlind), stackBB: actor.stack / Math.max(1, state.bigBlind) } : undefined,
+    }),
   };
 }
