@@ -5,6 +5,7 @@ import { createEmptyStatistics, recordStatistics } from './statistics';
 import { getTableLevel, TABLE_LEVELS, type TableLevel, type TableLevelId } from './tableLevels';
 import type { CareerState } from './careerState';
 import { createEmptyTournamentStatistics } from './tournamentStatistics';
+import { syncActiveTableStack as syncCashTableStack } from './cashBuyInService';
 
 const MINIMUM_FUNDS = 5_000;
 
@@ -110,6 +111,11 @@ export function applyBankruptcyProtection(career: CareerState): CareerState {
   next.currentFunds += MINIMUM_FUNDS - totalFunds;
   next.bankruptcyCount += 1;
   return refreshFinancialMarkers(next);
+}
+
+/** Records the settled table stack without transferring it to career funds. */
+export function syncActiveTableStack(career: CareerState, stack: number): CareerState {
+  return syncCashTableStack(career, stack);
 }
 
 export type TableAvailability = {

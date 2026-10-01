@@ -24,6 +24,7 @@ import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
+import { applyPendingCashBuyIn, cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
 
@@ -166,6 +167,11 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const currentCareer = useCareerStore.getState().career;
     const human = tableState.players.find((player) => player.isHuman);
     if (currentCareer && currentCareer.activeTableStack !== null) {
+      let exitCareer = currentCareer;
+      for (const pending of exitCareer.pendingCashBuyIns.filter((entry) => entry.status === 'PENDING' && entry.sessionId === tableState.sessionId)) {
+        exitCareer = cancelPendingCashBuyIn(exitCareer, pending.transactionId);
+      }
+      setCareer(exitCareer);
       leaveTable(human?.stack ?? 0);
       applyBankruptcy();
     }
@@ -213,7 +219,25 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const continueHand = () => {
     const current = useGameStore.getState().game;
     if (!current || current.street !== 'SETTLEMENT') return;
-    if (leaveRequested || current.players.find((player) => player.isHuman)?.stack === 0) {
+    const human = current.players.find((player) => player.isHuman);
+    let nextCareer = useCareerStore.getState().career;
+    if (nextCareer && human && current.matchType !== 'MINI_TOURNAMENT') {
+      nextCareer = syncActiveTableStack(nextCareer, human.stack);
+      const pending = nextCareer.pendingCashBuyIns.find((entry) => entry.sessionId === current.sessionId && entry.status === 'PENDING');
+      if (pending) {
+        const applied = applyPendingCashBuyIn(nextCareer, pending, human.stack);
+        nextCareer = applied.career;
+        if (applied.appliedAmount > 0) {
+          const players = current.players.map((player) => player.isHuman ? { ...player, stack: player.stack + applied.appliedAmount } : player);
+          nextCareer = syncActiveTableStack(nextCareer, human.stack + applied.appliedAmount);
+          setCareer(nextCareer);
+          setGame(createNextHand({ ...current, players }));
+          return;
+        }
+      }
+      setCareer(nextCareer);
+    }
+    if (leaveRequested || human?.stack === 0) {
       finishTableExit(current);
       return;
     }

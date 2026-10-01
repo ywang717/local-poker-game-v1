@@ -14,6 +14,7 @@
     "test:ai:experience": "vitest run tests/ai/experienceSimulation.test.ts tests/ai/experienceMetrics.test.ts",
     "typecheck": "tsc -b --pretty false",
     "test:simulation": "vitest run tests/simulation tests/release"
+    ,"test:cash-buyin": "vitest run tests/career/cashBuyIn.test.ts tests/career/cashBuyInConservation.test.ts tests/storage/cashBuyInRecovery.test.ts"
   },
   "dependencies": {
     "@hivetech/poker-engine": "1.0.1",
