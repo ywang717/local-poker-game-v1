@@ -39,3 +39,10 @@ Verification: `npm run test:cash-buyin` (14 passed), `npm run typecheck`, and fu
 - Added zero-stack store choice coverage that confirms a pending rebuy produces a positive next-hand stack without bankruptcy, while explicit LEAVE marks the leave path.
 
 Verification: `npm run test:cash-buyin` (20 passed) and `npm run typecheck` passed.
+
+## Production transition boundary fixes (2026-10-01)
+
+- Exported `finishTableExitTransition`, the same cancel-pending -> cash-out ordering used by App, for integration verification.
+- Added tests using public store request/leave actions, the real `createNextHand` transition, and the exported production cash-out transition. Zero-stack tests now cover a real rebuy next-hand stack and explicit leave followed by bankruptcy protection.
+
+Verification: `npm run test:cash-buyin` (21 passed) and `npm run typecheck` passed.

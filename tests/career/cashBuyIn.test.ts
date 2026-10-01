@@ -6,7 +6,8 @@ import { createTable, startHand } from '../../src/game/gameEngine';
 import { createDeck, shuffleDeck } from '../../src/game/cards';
 import { useCareerStore } from '../../src/store/careerStore';
 import { useGameStore } from '../../src/store/gameStore';
-import { createNextHand } from '../../src/App';
+import { createNextHand, finishTableExitTransition } from '../../src/App';
+import { applyBankruptcyProtection } from '../../src/career/careerService';
 
 describe('cash table buy-ins', () => {
   it('offers standard targets and reserves only the required amount', () => {
@@ -134,11 +135,18 @@ describe('cash table buy-ins', () => {
     const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, session, players: [{ id: 'human', seat: 0, stack: 900, isHuman: true }, { id: 'ai', seat: 1, stack: 1_000 }] });
     useGameStore.getState().setGame({ ...startHand(table, shuffleDeck(createDeck('STANDARD'))), street: 'SETTLEMENT' as const });
     expect(useGameStore.getState().requestLeave()).toBe('IMMEDIATE');
-    useCareerStore.getState().cancelPendingCashBuyIn(request.pending.transactionId);
-    const refunded = useCareerStore.getState().career!;
-    useCareerStore.getState().cancelPendingCashBuyIn(request.pending.transactionId);
+    const refunded = finishTableExitTransition(useCareerStore.getState().career!, useGameStore.getState().game ?? { ...table, street: 'SETTLEMENT' as const });
+    useCareerStore.getState().setCareer(refunded);
     expect(useCareerStore.getState().career!.currentFunds).toBe(refunded.currentFunds);
     expect(refunded.pendingCashBuyIns.find((p) => p.transactionId === request.pending.transactionId)?.status).toBe('REFUNDED');
     useCareerStore.getState().setCareer(null);
+  });
+
+  it('runs the real zero-stack leave cash-out and bankruptcy ordering', () => {
+    const career = { ...createCareer('P'), activeTableStack: 0, currentFunds: 0 };
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, players: [{ id: 'human', seat: 0, stack: 0, isHuman: true }, { id: 'ai', seat: 1, stack: 1_000 }] });
+    const exited = finishTableExitTransition(career, { ...table, street: 'SETTLEMENT' as const });
+    expect(exited.activeTableStack).toBeNull();
+    expect(applyBankruptcyProtection(exited).currentFunds).toBeGreaterThanOrEqual(5_000);
   });
 });

@@ -25,6 +25,7 @@ import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
 import { applyPendingCashBuyIn, cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
+import { leaveTable } from './career/careerService';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
 
@@ -36,6 +37,16 @@ export function getStartupDestination(career: CareerState | null, snapshot: Hand
 
 export function shouldFinishTableExitAfterSettlement(game: GameState | null, leaveRequested: boolean): boolean {
   return Boolean(game && leaveRequested && game.street === 'SETTLEMENT');
+}
+
+/** Production cash-out ordering shared by the App transition and integration tests. */
+export function finishTableExitTransition(career: CareerState, tableState: GameState): CareerState {
+  let next = career;
+  for (const pending of next.pendingCashBuyIns.filter((entry) => entry.status === 'PENDING' && entry.sessionId === tableState.sessionId)) {
+    next = cancelPendingCashBuyIn(next, pending.transactionId);
+  }
+  const human = tableState.players.find((player) => player.isHuman);
+  return leaveTable(next, human?.stack ?? 0);
 }
 
 function levelForBigBlind(bigBlind: number): TableLevelId {
@@ -167,12 +178,8 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const currentCareer = useCareerStore.getState().career;
     const human = tableState.players.find((player) => player.isHuman);
     if (currentCareer && currentCareer.activeTableStack !== null) {
-      let exitCareer = currentCareer;
-      for (const pending of exitCareer.pendingCashBuyIns.filter((entry) => entry.status === 'PENDING' && entry.sessionId === tableState.sessionId)) {
-        exitCareer = cancelPendingCashBuyIn(exitCareer, pending.transactionId);
-      }
+      const exitCareer = finishTableExitTransition(currentCareer, tableState);
       setCareer(exitCareer);
-      leaveTable(human?.stack ?? 0);
       applyBankruptcy();
     }
     setGame(null);
