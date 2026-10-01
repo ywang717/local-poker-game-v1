@@ -27,7 +27,7 @@ export type CareerStore = {
   applyPendingCashBuyIn: (pending: Parameters<typeof applyPendingCashBuyIn>[1], settledStack: number) => ReturnType<typeof applyPendingCashBuyIn>;
   cancelPendingCashBuyIn: (transactionId: string) => CareerState;
   syncActiveTableStack: (stack: number) => CareerState;
-  enterTournament: (mode: GameMode, level: TableLevelId) => TournamentState;
+  enterTournament: (mode: GameMode, level: TableLevelId, tournamentId?: string) => TournamentState;
   recordTournamentFinish: (state: TournamentState) => CareerState;
   save: () => Promise<void>;
   load: () => Promise<Awaited<ReturnType<typeof loadCareer>>>;
@@ -98,10 +98,10 @@ export const useCareerStore = create<CareerStore>((set, get) => ({
     const next = syncActiveTableStack(career, stack);
     set({ career: next }); queueCareerSave(next); return next;
   },
-  enterTournament: (mode, level) => {
+  enterTournament: (mode, level, tournamentId) => {
     const career = get().career;
     if (!career) throw new Error('Career has not been created');
-    const result = enterTournamentForCareer(career, mode, level);
+    const result = enterTournamentForCareer(career, mode, level, tournamentId);
     set({ career: result.career }); queueCareerSave(result.career); return result.tournament;
   },
   recordTournamentFinish: (state) => {

@@ -26,6 +26,24 @@ Implemented. Tournament entry, six-player navigation, tournament information/res
 - `npm run build` — passed.
 - `git diff --check` — passed.
 
-## Concerns
+## Original concern resolved
 
-- A player who leaves a tournament before the pure engine reaches a final champion is returned to the career screen without a final tournament result being recorded; the active snapshot is cleared as an explicit leave action.
+- Paid tournament leaves now record a forfeit result before clearing the active snapshot.
+
+## Review fixes
+
+- Explicit tournament IDs now reject reuse at both the career service and
+  Zustand store boundary before creating a second playable session.
+- Leaving a paid tournament now creates a deterministic non-champion forfeit
+  rank, records tournament statistics exactly once, shows the result screen,
+  and clears the hand snapshot without issuing a champion reward. This applies
+  both to settlement leaves and to an in-hand leave request after settlement.
+- Added mounted App entry/leave/reload tests, duplicate-ID store coverage, and
+  migration assertions for recorded IDs plus tournament reward/blind state.
+
+## Review-fix verification
+
+- `npm test -- --run` — 52 files, 270 tests passed.
+- `npm run typecheck` — passed.
+- `npm run build` — passed.
+- `git diff --check` — passed.

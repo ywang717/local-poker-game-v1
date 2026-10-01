@@ -88,8 +88,7 @@ export function enterTournamentForCareer(career: CareerState, mode: GameMode, le
   next.recordedTournamentIds = next.recordedTournamentIds ?? [];
   const existing = next.financialTransactions.find((entry) => entry.transactionId === transactionId);
   if (existing) {
-    tournament.entryTransactionId = transactionId;
-    return { career: next, tournament };
+    throw new Error('Tournament ID has already been used');
   }
   if (career.currentFunds < level.buyIn) throw new Error('Insufficient career funds for tournament entry');
   if (!existing) next.currentFunds -= tournament.entryFee;

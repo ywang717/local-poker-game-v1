@@ -26,5 +26,33 @@ export function finishTournament(input: TournamentState): TournamentFinishResult
   return { state, championId: champion.id, rewardTransaction };
 }
 
+/**
+ * End a paid tournament when the human explicitly leaves before a champion is
+ * determined. The player receives the last live rank and never receives the
+ * champion reward. The operation is safe to repeat after the player has
+ * already been removed by a settled hand.
+ */
+export function forfeitTournament(input: TournamentState): TournamentState {
+  const state = cloneState(input);
+  const human = state.players.find((player) => player.isHuman)
+    ?? state.players.find((player) => !player.id.startsWith('ai-'));
+  const existing = state.rankings.find((ranking) => ranking.playerId === human?.id)
+    ?? state.eliminations.find((entry) => !entry.playerId.startsWith('ai-'));
+  if (existing) {
+    state.spectator = true;
+    return state;
+  }
+  if (!human) {
+    state.spectator = true;
+    return state;
+  }
+  const rank = state.players.length;
+  state.players = state.players.filter((player) => player.id !== human.id);
+  state.rankings.push({ playerId: human.id, rank });
+  state.eliminations.push({ playerId: human.id, rank, handNumber: state.handNumber, stackBeforeHand: human.stack, seat: human.seat });
+  state.spectator = true;
+  return state;
+}
+
 export type { TournamentRewardTransaction };
 export { startTournament } from './tournamentEngine';

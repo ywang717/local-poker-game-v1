@@ -4,8 +4,16 @@ import { createCareer } from '../../src/career/careerService';
 import { startTournament } from '../../src/tournament/tournamentEngine';
 import { loadHandSnapshot, resetStorageForTests, saveHandSnapshot } from '../../src/storage/saveSystem';
 import { CURRENT_SAVE_VERSION } from '../../src/types/persistence';
+import { migrateHandSnapshot, migrateSave } from '../../src/storage/migrations';
 
 describe('tournament snapshot recovery', () => {
+  it('migrates legacy career and hand records with tournament guards', () => {
+    const career = migrateSave({ saveVersion: 1, career: { nickname: '旧玩家', currentFunds: 10_000 } }).career;
+    expect(career.recordedTournamentIds).toEqual([]);
+    const migrated = migrateHandSnapshot({ saveVersion: 1, savedAt: '2026-01-01T00:00:00Z', state: { mode: 'STANDARD', bigBlind: 50, deck: [], tournamentState: { tournamentId: 'legacy-t', mode: 'STANDARD', tableLevel: 1, entryFee: 5_000, startingStack: 5_000, smallBlind: 25, bigBlind: 50, blindLevel: 2, handsAtLevel: 1, handNumber: 8, players: [], eliminations: [], rankings: [], rewardPaid: true, spectator: true, dealerSeat: 0 } } });
+    expect(migrated.state.tournamentState).toMatchObject({ tournamentId: 'legacy-t', rewardPaid: true, blindLevel: 2 });
+  });
+
   it('restores the exact hand, blinds, eliminations, and reward guard', async () => {
     await resetStorageForTests();
     const tournament = startTournament({ tournamentId: 'recovery-t1', humanId: 'human', tableLevel: 2 });

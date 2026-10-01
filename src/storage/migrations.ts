@@ -55,5 +55,14 @@ export function migrateHandSnapshot(data: unknown): HandSnapshot {
   const matchType: MatchType = state.matchType === 'MINI_TOURNAMENT' ? 'MINI_TOURNAMENT' : 'CASH';
   state.sessionId = sessionId; state.matchType = matchType; state.tableLevel = tableLevel;
   state.session = state.session ?? { sessionId, matchType, tableLevel, mode };
+  if (isObject(state.tournamentState)) {
+    state.tournamentState = {
+      ...state.tournamentState,
+      eliminations: Array.isArray(state.tournamentState.eliminations) ? state.tournamentState.eliminations : [],
+      rankings: Array.isArray(state.tournamentState.rankings) ? state.tournamentState.rankings : [],
+      rewardPaid: state.tournamentState.rewardPaid === true,
+      spectator: state.tournamentState.spectator === true,
+    };
+  }
   return { saveVersion: CURRENT_SAVE_VERSION, savedAt: typeof data.savedAt === 'string' ? data.savedAt : new Date().toISOString(), state };
 }

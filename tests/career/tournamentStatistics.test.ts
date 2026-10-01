@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createCareer, enterTournament } from '../../src/career/careerService';
+import { useCareerStore } from '../../src/store/careerStore';
 import { finishTournament, startTournament } from '../../src/tournament/tournamentEngine';
 import { recordTournamentFinish } from '../../src/career/careerService';
 
@@ -7,11 +8,14 @@ describe('tournament career accounting', () => {
   it('charges an affordable unlocked entry once and creates six seats', () => {
     const career = createCareer('玩家');
     const first = enterTournament(career, 'STANDARD', 1, 'entry-once');
-    const duplicate = enterTournament(first.career, 'STANDARD', 1, 'entry-once');
     expect(first.tournament.players).toHaveLength(6);
     expect(first.career.currentFunds).toBe(5_000);
-    expect(duplicate.career.currentFunds).toBe(5_000);
     expect(first.career.financialTransactions.filter((entry) => entry.kind === 'TOURNAMENT_ENTRY')).toHaveLength(1);
+    useCareerStore.setState({ career });
+    const stored = useCareerStore.getState().enterTournament('STANDARD', 1, 'store-entry-once');
+    expect(stored.players).toHaveLength(6);
+    expect(() => useCareerStore.getState().enterTournament('SHORT_DECK', 1, 'store-entry-once')).toThrow(/already been used/i);
+    expect(useCareerStore.getState().career?.currentFunds).toBe(5_000);
   });
 
   it('records a human tournament entry and champion reward once', () => {

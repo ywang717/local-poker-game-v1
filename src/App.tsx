@@ -29,7 +29,7 @@ import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
 import { applyPendingCashBuyIn, cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
 import { leaveTable } from './career/careerService';
 import { startTournamentHand, settleTournamentHand } from './tournament/tournamentEngine';
-import { finishTournament } from './tournament/tournamentSettlement';
+import { finishTournament, forfeitTournament } from './tournament/tournamentSettlement';
 import type { TournamentState } from './tournament/types';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'TOURNAMENT_SELECT' | 'TOURNAMENT_RESULT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
@@ -194,8 +194,19 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     recordSettledHand(tableState);
     const currentCareer = useCareerStore.getState().career;
     if (tableState.matchType === 'MINI_TOURNAMENT') {
+      let forfeited = tableState.tournamentState;
+      if (forfeited && tableState.street === 'SETTLEMENT') {
+        try { forfeited = settleTournamentHand(forfeited, tableState); } catch { /* retain the last persisted tournament state */ }
+      }
+      if (forfeited) {
+        const result = forfeitTournament(forfeited);
+        if (currentCareer) recordTournamentFinish(result);
+        setTournamentResult(result);
+        setView('TOURNAMENT_RESULT');
+      } else {
+        setView('CAREER');
+      }
       setGame(null);
-      setView('CAREER');
       return;
     }
     if (currentCareer && currentCareer.activeTableStack !== null) {

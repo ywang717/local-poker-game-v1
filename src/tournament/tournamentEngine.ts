@@ -129,5 +129,5 @@ export function advanceBlindLevel(state: TournamentState): TournamentState {
 }
 
 export { blindSeatsForPlayers };
-export { finishTournament } from './tournamentSettlement';
+export { finishTournament, forfeitTournament } from './tournamentSettlement';
 export type { TournamentState, StartTournamentInput } from './types';
