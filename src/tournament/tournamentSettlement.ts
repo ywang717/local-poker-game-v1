@@ -21,7 +21,7 @@ export function finishTournament(input: TournamentState): TournamentFinishResult
   if (!champion.isHuman) return { state, championId: champion.id };
   const rewardTransaction: TournamentRewardTransaction = {
     transactionId: `${state.tournamentId}:champion-reward`, sessionId: state.tournamentId,
-    kind: 'TOURNAMENT_CHAMPION_REWARD', amount: state.entryFee * 6, status: 'APPLIED', createdAt: new Date().toISOString(),
+    kind: 'TOURNAMENT_CHAMPION_REWARD', amount: state.entryFee * 10, status: 'APPLIED', createdAt: new Date().toISOString(),
   };
   return { state, championId: champion.id, rewardTransaction };
 }

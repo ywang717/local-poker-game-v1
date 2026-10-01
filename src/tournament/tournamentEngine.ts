@@ -7,6 +7,13 @@ import { getTableLevel } from '../career/tableLevels';
 import { getBlindStructure } from './blindStructure';
 import type { StartTournamentInput, TournamentPlayer, TournamentState } from './types';
 
+let tournamentSequence = 0;
+
+function generatedTournamentId(): string {
+  const randomId = globalThis.crypto?.randomUUID?.();
+  return `tournament-${randomId ?? `${Date.now()}-${tournamentSequence += 1}`}`;
+}
+
 function clonePlayer(player: TournamentPlayer): TournamentPlayer { return { ...player }; }
 
 function assertInteger(value: number, label: string): void {
@@ -21,6 +28,8 @@ export function startTournament(input: StartTournamentInput = {}): TournamentSta
   const startingStack = bigBlind * 100;
   const humanId = input.humanId ?? input.humanPlayerId ?? input.playerId ?? input.human?.id ?? 'human';
   if (!humanId) throw new Error('humanId is required');
+  const aiIds = Array.from({ length: 5 }, (_, index) => `ai-${index + 1}`);
+  if (aiIds.includes(humanId)) throw new Error(`Human participant id collides with reserved AI id: ${humanId}`);
   const players: TournamentPlayer[] = [
     { id: humanId, name: input.humanName ?? input.human?.name ?? humanId, seat: 0, isHuman: true, stack: startingStack, startingStack },
     ...Array.from({ length: 5 }, (_, index) => ({
@@ -36,7 +45,7 @@ export function startTournament(input: StartTournamentInput = {}): TournamentSta
   assertInteger(entryFee, 'entryFee');
   if (entryFee <= 0) throw new Error('entryFee must be positive');
   return {
-    tournamentId: input.tournamentId ?? 'tournament-1', mode, tableLevel, entryFee,
+    tournamentId: input.tournamentId ?? generatedTournamentId(), mode, tableLevel, entryFee,
     startingStack, smallBlind, bigBlind, blindLevel: 1, handsAtLevel: 0, handNumber: 0,
     players, eliminations: [], rankings: [], rewardPaid: false, spectator: false, dealerSeat: 0,
   };

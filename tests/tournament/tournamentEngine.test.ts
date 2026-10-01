@@ -3,6 +3,18 @@ import { createDeck } from '../../src/game/cards';
 import { startTournament, startTournamentHand, settleTournamentHand, advanceBlindLevel } from '../../src/tournament/tournamentEngine';
 
 describe('mini tournament engine', () => {
+  it('creates a fresh tournament ID when omitted and preserves explicit IDs for seeded runs', () => {
+    const first = startTournament({ humanId: 'hero' });
+    const second = startTournament({ humanId: 'hero' });
+    expect(first.tournamentId).not.toBe(second.tournamentId);
+    expect(first.tournamentId).toBeTruthy();
+    expect(startTournament({ tournamentId: 'seeded-tournament-42', humanId: 'hero' }).tournamentId).toBe('seeded-tournament-42');
+  });
+
+  it.each(['ai-1', 'ai-2', 'ai-3', 'ai-4', 'ai-5'])('rejects human ID %s colliding with an AI participant', (humanId) => {
+    expect(() => startTournament({ tournamentId: 'collision-test', humanId })).toThrow(/duplicate|collision|reserved/i);
+  });
+
   it('starts six players with equal 100BB stacks and no rebuy field', () => {
     const state = startTournament({ tournamentId: 't-1', mode: 'STANDARD', tableLevel: 2, humanId: 'hero' });
     expect(state.players).toHaveLength(6);

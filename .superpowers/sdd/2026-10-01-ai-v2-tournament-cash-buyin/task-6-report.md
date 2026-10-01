@@ -53,6 +53,6 @@ ranking, conservation, and one-time champion reward behavior.
 - The pure state intentionally removes zero-stack players after a settled
   snapshot; their chips remain represented as zero, so active stack totals stay
   conserved until the optional champion reward is paid.
-- The reward amount is the six-entry prize pool (`entryFee * 6`); later career
-  integration can apply its own accounting transaction without adding a rebuy
-  path to the tournament engine.
+- The champion reward is fixed at `entryFee * 10`; later career integration can
+  apply its own accounting transaction without adding a rebuy path to the
+  tournament engine.

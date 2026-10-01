@@ -10,6 +10,7 @@ describe('mini tournament settlement', () => {
     expect(first.championId).toBe('hero');
     expect(first.state.championId).toBe('hero');
     expect(first.rewardTransaction?.kind).toBe('TOURNAMENT_CHAMPION_REWARD');
+    expect(first.rewardTransaction?.amount).toBe(state.entryFee * 10);
     expect(finishTournament(first.state).rewardTransaction).toBeUndefined();
   });
 
