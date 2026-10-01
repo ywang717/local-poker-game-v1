@@ -34,8 +34,21 @@ describe('PWA release assets', () => {
     expect(workflow).toContain('actions/configure-pages');
     expect(workflow).toContain('actions/upload-pages-artifact');
     expect(workflow).toContain('actions/deploy-pages');
-    expect(workflow).toContain('npm ci');
-    expect(workflow).toContain('npm run build');
+    for (const command of [
+      'npm ci',
+      'npm run typecheck',
+      'npm test',
+      'npm run test:ai',
+      'npm run test:ai:experience',
+      'npm run test:cash-buyin',
+      'npm run test:tournament',
+      'npm run test:simulation',
+      'npm run build',
+    ]) expect(workflow).toContain(command);
+    const uploadPosition = workflow.indexOf('actions/upload-pages-artifact');
+    for (const command of ['npm ci', 'npm run typecheck', 'npm test', 'npm run test:ai', 'npm run test:ai:experience', 'npm run test:cash-buyin', 'npm run test:tournament', 'npm run test:simulation', 'npm run build']) {
+      expect(workflow.indexOf(command)).toBeLessThan(uploadPosition);
+    }
   });
 
   it('documents the public link and device-specific install steps', () => {

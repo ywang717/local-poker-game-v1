@@ -31,6 +31,14 @@ jobs:
         run: npm run typecheck
       - name: Unit and integration tests
         run: npm test
+      - name: AI release gate
+        run: npm run test:ai
+      - name: AI experience release gate
+        run: npm run test:ai:experience
+      - name: Cash buy-in release gate
+        run: npm run test:cash-buyin
+      - name: Tournament release gate
+        run: npm run test:tournament
       - name: Continuous simulation release gate
         run: npm run test:simulation
       - name: Build
