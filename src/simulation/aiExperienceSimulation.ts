@@ -78,6 +78,20 @@ export function observeExperienceAction(accumulator: ExperienceAccumulator, cont
     metrics.preflopAllIn.denominator += 1;
     if (action.kind === 'all-in') metrics.preflopAllIn.numerator += 1;
   } else {
+    const streetActions = context.actionHistory.filter((entry) => entry.street === context.street);
+    const preflopAggressor = [...context.actionHistory].reverse().find((entry) => entry.street === 'PRE_FLOP' && (entry.action === 'bet-to' || entry.action === 'raise-to'));
+    const actedThisStreet = streetActions.some((entry) => entry.playerId === context.aiPlayerId);
+    if (preflopAggressor?.playerId === context.aiPlayerId && !actedThisStreet) {
+      metrics.cBet.denominator += 1;
+      if (action.kind === 'bet-to' || action.kind === 'raise-to' || isFullRaiseAction(context, action)) metrics.cBet.numerator += 1;
+    }
+    const checked = streetActions.findIndex((entry) => entry.playerId === context.aiPlayerId && entry.action === 'check');
+    const betAfterCheck = streetActions.findIndex((entry, index) => index > checked && entry.playerId !== context.aiPlayerId && (entry.action === 'bet-to' || entry.action === 'raise-to' || entry.action === 'all-in'));
+    const responded = streetActions.some((entry, index) => index > betAfterCheck && entry.playerId === context.aiPlayerId);
+    if (checked >= 0 && betAfterCheck >= 0 && !responded) {
+      metrics.checkRaise.denominator += 1;
+      if (action.kind === 'bet-to' || action.kind === 'raise-to' || isFullRaiseAction(context, action)) metrics.checkRaise.numerator += 1;
+    }
     metrics.postflopAllIn.denominator += 1;
     if (action.kind === 'all-in') metrics.postflopAllIn.numerator += 1;
   }
@@ -98,6 +112,8 @@ export function runAIExperienceSimulation(options: AIExperienceOptions): AIExper
   const accumulator = createExperienceAccumulator();
   const report = runContinuousTableSimulation({
     ...options,
+    dealSeed: (options.seed ^ 0x9e3779b9) >>> 0,
+    decisionSeed: (options.seed ^ 0x243f6a88) >>> 0,
     onAction: (context, action) => observeExperienceAction(accumulator, context, action),
   });
   const metrics = accumulator.metrics;

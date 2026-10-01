@@ -1,0 +1,1010 @@
+{
+  "aiExperience": [
+    {
+      "actions": 95456,
+      "allInCount": 497,
+      "callCount": 12555,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 2,
+      "digests": [
+        "c45f4228",
+        "cc178cca",
+        "1bc3e6e0",
+        "537c2714",
+        "bb781a0b",
+        "ba1c4c60",
+        "469545c3",
+        "53d17e06",
+        "0dba943a",
+        "32539f78"
+      ],
+      "foldCount": 45171,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 24,
+      "maxSidePots": 4,
+      "metrics": {
+        "actions": {
+          "denominator": 95456,
+          "numerator": 95456
+        },
+        "activeAllIn": {
+          "denominator": 95456,
+          "numerator": 497
+        },
+        "averagePot": {
+          "denominator": 95456,
+          "numerator": 35602088
+        },
+        "cBet": {
+          "denominator": 10137,
+          "numerator": 4560
+        },
+        "callAllIn": {
+          "denominator": 12555,
+          "numerator": 1596
+        },
+        "checkRaise": {
+          "denominator": 2327,
+          "numerator": 2
+        },
+        "foldToThreeBet": {
+          "denominator": 5937,
+          "numerator": 5365
+        },
+        "fourBet": {
+          "denominator": 5937,
+          "numerator": 308
+        },
+        "pfr": {
+          "denominator": 59638,
+          "numerator": 12009
+        },
+        "postflopAllIn": {
+          "denominator": 33041,
+          "numerator": 410
+        },
+        "preflopAllIn": {
+          "denominator": 62415,
+          "numerator": 87
+        },
+        "raiseSizing": {
+          "denominator": 27546,
+          "numerator": 14767748
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 32865,
+          "numerator": 2234
+        },
+        "vpip": {
+          "denominator": 59638,
+          "numerator": 16970
+        }
+      },
+      "mode": "SHORT_DECK",
+      "negativeChipStates": 0,
+      "raiseCount": 27546,
+      "rebuyCount": 1306,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 107302,
+      "allInCount": 604,
+      "callCount": 16435,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 3,
+      "digests": [
+        "bc63f093",
+        "3aedc3c9",
+        "b3d0e42c",
+        "689b7ec5",
+        "964d3480",
+        "96ee2229",
+        "8af68075",
+        "bbd6c0eb",
+        "5a5d91bd",
+        "143b15e6"
+      ],
+      "foldCount": 43315,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 25,
+      "maxSidePots": 5,
+      "metrics": {
+        "actions": {
+          "denominator": 107302,
+          "numerator": 107302
+        },
+        "activeAllIn": {
+          "denominator": 107302,
+          "numerator": 604
+        },
+        "averagePot": {
+          "denominator": 107302,
+          "numerator": 42977891
+        },
+        "cBet": {
+          "denominator": 13148,
+          "numerator": 5227
+        },
+        "callAllIn": {
+          "denominator": 16435,
+          "numerator": 1828
+        },
+        "checkRaise": {
+          "denominator": 3137,
+          "numerator": 7
+        },
+        "foldToThreeBet": {
+          "denominator": 9354,
+          "numerator": 8287
+        },
+        "fourBet": {
+          "denominator": 9354,
+          "numerator": 503
+        },
+        "pfr": {
+          "denominator": 59980,
+          "numerator": 13658
+        },
+        "postflopAllIn": {
+          "denominator": 43127,
+          "numerator": 511
+        },
+        "preflopAllIn": {
+          "denominator": 64175,
+          "numerator": 93
+        },
+        "raiseSizing": {
+          "denominator": 31166,
+          "numerator": 16200796
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 35133,
+          "numerator": 3382
+        },
+        "vpip": {
+          "denominator": 59980,
+          "numerator": 20443
+        }
+      },
+      "mode": "SHORT_DECK",
+      "negativeChipStates": 0,
+      "raiseCount": 31166,
+      "rebuyCount": 1534,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 104028,
+      "allInCount": 575,
+      "callCount": 14221,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 4,
+      "digests": [
+        "d347b52b",
+        "c833c0dd",
+        "def821dc",
+        "2e8d4d12",
+        "648d3647",
+        "8acb364b",
+        "dc3b8bc0",
+        "3efd4f37",
+        "65d55104",
+        "f6704ce1"
+      ],
+      "foldCount": 44638,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 28,
+      "maxSidePots": 5,
+      "metrics": {
+        "actions": {
+          "denominator": 104028,
+          "numerator": 104028
+        },
+        "activeAllIn": {
+          "denominator": 104028,
+          "numerator": 575
+        },
+        "averagePot": {
+          "denominator": 104028,
+          "numerator": 40147674
+        },
+        "cBet": {
+          "denominator": 11913,
+          "numerator": 4368
+        },
+        "callAllIn": {
+          "denominator": 14221,
+          "numerator": 1374
+        },
+        "checkRaise": {
+          "denominator": 3041,
+          "numerator": 43
+        },
+        "foldToThreeBet": {
+          "denominator": 15936,
+          "numerator": 13713
+        },
+        "fourBet": {
+          "denominator": 15936,
+          "numerator": 812
+        },
+        "pfr": {
+          "denominator": 59983,
+          "numerator": 15648
+        },
+        "postflopAllIn": {
+          "denominator": 37744,
+          "numerator": 489
+        },
+        "preflopAllIn": {
+          "denominator": 66284,
+          "numerator": 86
+        },
+        "raiseSizing": {
+          "denominator": 29601,
+          "numerator": 13520606
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 34282,
+          "numerator": 5133
+        },
+        "vpip": {
+          "denominator": 59983,
+          "numerator": 21864
+        }
+      },
+      "mode": "SHORT_DECK",
+      "negativeChipStates": 0,
+      "raiseCount": 29601,
+      "rebuyCount": 1207,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 105926,
+      "allInCount": 562,
+      "callCount": 14914,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 5,
+      "digests": [
+        "af52dc64",
+        "64aa5950",
+        "c084a39a",
+        "d4823390",
+        "6f872622",
+        "ccec978d",
+        "35e675fb",
+        "18d785ec",
+        "2dbb7bdf",
+        "3845c43e"
+      ],
+      "foldCount": 44348,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 26,
+      "maxSidePots": 5,
+      "metrics": {
+        "actions": {
+          "denominator": 105926,
+          "numerator": 105926
+        },
+        "activeAllIn": {
+          "denominator": 105926,
+          "numerator": 562
+        },
+        "averagePot": {
+          "denominator": 105926,
+          "numerator": 45270754
+        },
+        "cBet": {
+          "denominator": 12499,
+          "numerator": 4444
+        },
+        "callAllIn": {
+          "denominator": 14914,
+          "numerator": 1477
+        },
+        "checkRaise": {
+          "denominator": 3156,
+          "numerator": 33
+        },
+        "foldToThreeBet": {
+          "denominator": 19331,
+          "numerator": 15423
+        },
+        "fourBet": {
+          "denominator": 19331,
+          "numerator": 1019
+        },
+        "pfr": {
+          "denominator": 59989,
+          "numerator": 16856
+        },
+        "postflopAllIn": {
+          "denominator": 38097,
+          "numerator": 447
+        },
+        "preflopAllIn": {
+          "denominator": 67829,
+          "numerator": 115
+        },
+        "raiseSizing": {
+          "denominator": 30042,
+          "numerator": 13842956
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 33937,
+          "numerator": 6173
+        },
+        "vpip": {
+          "denominator": 59989,
+          "numerator": 23372
+        }
+      },
+      "mode": "SHORT_DECK",
+      "negativeChipStates": 0,
+      "raiseCount": 30042,
+      "rebuyCount": 1225,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 71838,
+      "allInCount": 121,
+      "callCount": 4460,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 2,
+      "digests": [
+        "cde12e16",
+        "36cb4042",
+        "e087e4d4",
+        "1097cc90",
+        "8fbf9416",
+        "c39af423",
+        "c52ff5ad",
+        "a0bfd17c",
+        "53c7fcb2",
+        "099bba0b"
+      ],
+      "foldCount": 48227,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 21,
+      "maxSidePots": 4,
+      "metrics": {
+        "actions": {
+          "denominator": 71838,
+          "numerator": 71838
+        },
+        "activeAllIn": {
+          "denominator": 71838,
+          "numerator": 121
+        },
+        "averagePot": {
+          "denominator": 71838,
+          "numerator": 7646434
+        },
+        "cBet": {
+          "denominator": 4738,
+          "numerator": 1714
+        },
+        "callAllIn": {
+          "denominator": 4460,
+          "numerator": 422
+        },
+        "checkRaise": {
+          "denominator": 1048,
+          "numerator": 0
+        },
+        "foldToThreeBet": {
+          "denominator": 2059,
+          "numerator": 1913
+        },
+        "fourBet": {
+          "denominator": 2059,
+          "numerator": 71
+        },
+        "pfr": {
+          "denominator": 57917,
+          "numerator": 8781
+        },
+        "postflopAllIn": {
+          "denominator": 12958,
+          "numerator": 86
+        },
+        "preflopAllIn": {
+          "denominator": 58880,
+          "numerator": 35
+        },
+        "raiseSizing": {
+          "denominator": 13501,
+          "numerator": 2556479
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 24805,
+          "numerator": 849
+        },
+        "vpip": {
+          "denominator": 57917,
+          "numerator": 10859
+        }
+      },
+      "mode": "STANDARD",
+      "negativeChipStates": 0,
+      "raiseCount": 13501,
+      "rebuyCount": 367,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 85206,
+      "allInCount": 196,
+      "callCount": 7936,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 3,
+      "digests": [
+        "cfacf987",
+        "1557a866",
+        "b2a623b6",
+        "aecea8a7",
+        "d3869b14",
+        "37532357",
+        "913a0745",
+        "f8afd0f6",
+        "9993db98",
+        "1bc8403a"
+      ],
+      "foldCount": 46610,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 23,
+      "maxSidePots": 4,
+      "metrics": {
+        "actions": {
+          "denominator": 85206,
+          "numerator": 85206
+        },
+        "activeAllIn": {
+          "denominator": 85206,
+          "numerator": 196
+        },
+        "averagePot": {
+          "denominator": 85206,
+          "numerator": 13005655
+        },
+        "cBet": {
+          "denominator": 8710,
+          "numerator": 2637
+        },
+        "callAllIn": {
+          "denominator": 7936,
+          "numerator": 640
+        },
+        "checkRaise": {
+          "denominator": 1707,
+          "numerator": 0
+        },
+        "foldToThreeBet": {
+          "denominator": 4055,
+          "numerator": 3760
+        },
+        "fourBet": {
+          "denominator": 4055,
+          "numerator": 139
+        },
+        "pfr": {
+          "denominator": 59655,
+          "numerator": 11314
+        },
+        "postflopAllIn": {
+          "denominator": 23746,
+          "numerator": 159
+        },
+        "preflopAllIn": {
+          "denominator": 61460,
+          "numerator": 37
+        },
+        "raiseSizing": {
+          "denominator": 18950,
+          "numerator": 4765373
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 32349,
+          "numerator": 1596
+        },
+        "vpip": {
+          "denominator": 59655,
+          "numerator": 15225
+        }
+      },
+      "mode": "STANDARD",
+      "negativeChipStates": 0,
+      "raiseCount": 18950,
+      "rebuyCount": 527,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 89358,
+      "allInCount": 488,
+      "callCount": 10204,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 4,
+      "digests": [
+        "e56d2dd2",
+        "0b4c0800",
+        "adcfcbe0",
+        "52d4fa6a",
+        "235cb524",
+        "1416bd82",
+        "a1149dbc",
+        "3c36ad79",
+        "ddf2f9ed",
+        "30288cfc"
+      ],
+      "foldCount": 46189,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 24,
+      "maxSidePots": 5,
+      "metrics": {
+        "actions": {
+          "denominator": 89358,
+          "numerator": 89358
+        },
+        "activeAllIn": {
+          "denominator": 89358,
+          "numerator": 488
+        },
+        "averagePot": {
+          "denominator": 89358,
+          "numerator": 29185853
+        },
+        "cBet": {
+          "denominator": 7940,
+          "numerator": 3438
+        },
+        "callAllIn": {
+          "denominator": 10204,
+          "numerator": 1189
+        },
+        "checkRaise": {
+          "denominator": 1837,
+          "numerator": 6
+        },
+        "foldToThreeBet": {
+          "denominator": 7425,
+          "numerator": 6847
+        },
+        "fourBet": {
+          "denominator": 7425,
+          "numerator": 210
+        },
+        "pfr": {
+          "denominator": 59964,
+          "numerator": 12717
+        },
+        "postflopAllIn": {
+          "denominator": 26430,
+          "numerator": 432
+        },
+        "preflopAllIn": {
+          "denominator": 62928,
+          "numerator": 56
+        },
+        "raiseSizing": {
+          "denominator": 25479,
+          "numerator": 11248131
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 36545,
+          "numerator": 2635
+        },
+        "vpip": {
+          "denominator": 59964,
+          "numerator": 16835
+        }
+      },
+      "mode": "STANDARD",
+      "negativeChipStates": 0,
+      "raiseCount": 25479,
+      "rebuyCount": 1062,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    },
+    {
+      "actions": 89047,
+      "allInCount": 402,
+      "callCount": 9861,
+      "chipConservationFailures": 0,
+      "deadlocks": 0,
+      "difficulty": 5,
+      "digests": [
+        "c26aad16",
+        "e249727b",
+        "02211707",
+        "a054af8d",
+        "11764416",
+        "de5205e0",
+        "b90297d3",
+        "74bf1fee",
+        "86fc02dd",
+        "60bd2a21"
+      ],
+      "foldCount": 46373,
+      "hands": 10000,
+      "handsRequested": 10000,
+      "illegalActions": 0,
+      "maxActions": 26,
+      "maxSidePots": 5,
+      "metrics": {
+        "actions": {
+          "denominator": 89047,
+          "numerator": 89047
+        },
+        "activeAllIn": {
+          "denominator": 89047,
+          "numerator": 402
+        },
+        "averagePot": {
+          "denominator": 89047,
+          "numerator": 26787550
+        },
+        "cBet": {
+          "denominator": 8224,
+          "numerator": 3373
+        },
+        "callAllIn": {
+          "denominator": 9861,
+          "numerator": 1079
+        },
+        "checkRaise": {
+          "denominator": 1890,
+          "numerator": 4
+        },
+        "foldToThreeBet": {
+          "denominator": 9533,
+          "numerator": 8592
+        },
+        "fourBet": {
+          "denominator": 9533,
+          "numerator": 240
+        },
+        "pfr": {
+          "denominator": 59982,
+          "numerator": 13410
+        },
+        "postflopAllIn": {
+          "denominator": 25361,
+          "numerator": 353
+        },
+        "preflopAllIn": {
+          "denominator": 63686,
+          "numerator": 49
+        },
+        "raiseSizing": {
+          "denominator": 24818,
+          "numerator": 10043610
+        },
+        "showdown": {
+          "denominator": 10000,
+          "numerator": 10000
+        },
+        "threeBet": {
+          "denominator": 38985,
+          "numerator": 3270
+        },
+        "vpip": {
+          "denominator": 59982,
+          "numerator": 17431
+        }
+      },
+      "mode": "STANDARD",
+      "negativeChipStates": 0,
+      "raiseCount": 24818,
+      "rebuyCount": 960,
+      "refundErrors": 0,
+      "showdowns": 10000,
+      "unclaimedPots": 0
+    }
+  ],
+  "baseline": "docs/ai-balance/BASELINE.md",
+  "generatedAt": "2026-10-02",
+  "rulesMatrix": {
+    "allIns": 525,
+    "calls": 14774,
+    "cells": 14,
+    "digests": [
+      "10701356",
+      "65285c0e",
+      "f1d46945",
+      "97920d1c",
+      "430b2172",
+      "94ea607a",
+      "d8fa81d0",
+      "d0611db1",
+      "2193dc8e",
+      "1f583ab5",
+      "18ef11b7",
+      "5dabb457",
+      "15d31e19",
+      "20327e33"
+    ],
+    "folds": 53998,
+    "hands": 14000,
+    "raises": 32295
+  },
+  "tournaments": {
+    "lv1Smoke": [
+      {
+        "champions": 1,
+        "digest": "eaf0c4c1",
+        "handsCompleted": 59,
+        "mode": "STANDARD",
+        "tournamentsCompleted": 1
+      },
+      {
+        "champions": 1,
+        "digest": "30330dbd",
+        "handsCompleted": 42,
+        "mode": "SHORT_DECK",
+        "tournamentsCompleted": 1
+      }
+    ],
+    "scenarios": [
+      {
+        "actions": 27064,
+        "allInCount": 281,
+        "callCount": 3355,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 2,
+        "digests": [
+          "37dd6231"
+        ],
+        "foldCount": 13716,
+        "handsCompleted": 6168,
+        "illegalActions": 0,
+        "maxHands": 74,
+        "mode": "SHORT_DECK",
+        "negativeChipStates": 0,
+        "raiseCount": 7066,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 2,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 25146,
+        "allInCount": 281,
+        "callCount": 4261,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 3,
+        "digests": [
+          "263ed681"
+        ],
+        "foldCount": 9346,
+        "handsCompleted": 4279,
+        "illegalActions": 0,
+        "maxHands": 65,
+        "mode": "SHORT_DECK",
+        "negativeChipStates": 0,
+        "raiseCount": 7594,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 3,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 28598,
+        "allInCount": 347,
+        "callCount": 4965,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 4,
+        "digests": [
+          "32f1a146"
+        ],
+        "foldCount": 9702,
+        "handsCompleted": 4147,
+        "illegalActions": 0,
+        "maxHands": 58,
+        "mode": "SHORT_DECK",
+        "negativeChipStates": 0,
+        "raiseCount": 8542,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 4,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 29172,
+        "allInCount": 312,
+        "callCount": 5166,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 5,
+        "digests": [
+          "11b63a40"
+        ],
+        "foldCount": 9230,
+        "handsCompleted": 3846,
+        "illegalActions": 0,
+        "maxHands": 59,
+        "mode": "SHORT_DECK",
+        "negativeChipStates": 0,
+        "raiseCount": 8665,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 5,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 34791,
+        "allInCount": 216,
+        "callCount": 2109,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 2,
+        "digests": [
+          "1f07f35c"
+        ],
+        "foldCount": 24229,
+        "handsCompleted": 7919,
+        "illegalActions": 0,
+        "maxHands": 81,
+        "mode": "STANDARD",
+        "negativeChipStates": 0,
+        "raiseCount": 5263,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 2,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 34996,
+        "allInCount": 240,
+        "callCount": 3201,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 3,
+        "digests": [
+          "54f997bf"
+        ],
+        "foldCount": 19720,
+        "handsCompleted": 7258,
+        "illegalActions": 0,
+        "maxHands": 78,
+        "mode": "STANDARD",
+        "negativeChipStates": 0,
+        "raiseCount": 7110,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 3,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 27334,
+        "allInCount": 254,
+        "callCount": 3588,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 4,
+        "digests": [
+          "88605fcd"
+        ],
+        "foldCount": 13085,
+        "handsCompleted": 5450,
+        "illegalActions": 0,
+        "maxHands": 74,
+        "mode": "STANDARD",
+        "negativeChipStates": 0,
+        "raiseCount": 7910,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 4,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      },
+      {
+        "actions": 28375,
+        "allInCount": 271,
+        "callCount": 4094,
+        "champions": 125,
+        "chipConservationFailures": 0,
+        "deadlocks": 0,
+        "difficulty": 5,
+        "digests": [
+          "b740bd51"
+        ],
+        "foldCount": 12478,
+        "handsCompleted": 4809,
+        "illegalActions": 0,
+        "maxHands": 70,
+        "mode": "STANDARD",
+        "negativeChipStates": 0,
+        "raiseCount": 8280,
+        "rebuyCount": 0,
+        "refundErrors": 0,
+        "tableLevel": 5,
+        "tournamentsCompleted": 125,
+        "tournamentsRequested": 125,
+        "unclaimedPots": 0
+      }
+    ]
+  }
+}
