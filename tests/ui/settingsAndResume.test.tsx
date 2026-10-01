@@ -128,12 +128,14 @@ describe('pause, leave, settings and resume flows', () => {
     expect(html).toContain('本手已结算');
   });
 
-  it('does not allow continuing after the human has lost the table stack', () => {
+  it('shows the zero-stack rebuy or leave choice after the human loses the table stack', () => {
     const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [{ id: 'human', seat: 0, stack: 100, isHuman: true }, { id: 'ai', seat: 1, stack: 100 }] });
     const started = startHand(table, createDeck('STANDARD'));
     const state = { ...started, street: 'SETTLEMENT' as const, players: started.players.map((player) => player.isHuman ? { ...player, stack: 0 } : player) };
     const html = renderToStaticMarkup(<App initialCareer={createCareer('玩家')} initialView="GAME" initialGame={state} />);
-    expect(html).toMatch(/disabled="">继续下一手/);
+    expect(html).toContain('zero-stack-choice');
+    expect(html).toContain('重新买入');
+    expect(html).toContain('离开牌桌');
   });
 
   it('creates the next hand only through the explicit continue transition', () => {
