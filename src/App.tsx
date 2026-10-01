@@ -18,14 +18,21 @@ import { HomePage } from './pages/Home/HomePage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
 import { StatisticsPage } from './pages/Statistics/StatisticsPage';
 import { TableSelectPage } from './pages/TableSelect/TableSelectPage';
+import { TournamentSelectPage } from './pages/TournamentSelect/TournamentSelectPage';
+import { TournamentResultPage } from './pages/TournamentResult/TournamentResultPage';
 import { useCareerStore } from './store/careerStore';
 import { useGameStore } from './store/gameStore';
 import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
+import { applyPendingCashBuyIn, cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
+import { leaveTable } from './career/careerService';
+import { startTournamentHand, settleTournamentHand } from './tournament/tournamentEngine';
+import { finishTournament, forfeitTournament } from './tournament/tournamentSettlement';
+import type { TournamentState } from './tournament/types';
 
-export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
+export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'TOURNAMENT_SELECT' | 'TOURNAMENT_RESULT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
 
 export function getStartupDestination(career: CareerState | null, snapshot: HandSnapshot | null): AppView {
   if (snapshot?.state?.handId) return 'GAME';
@@ -35,6 +42,16 @@ export function getStartupDestination(career: CareerState | null, snapshot: Hand
 
 export function shouldFinishTableExitAfterSettlement(game: GameState | null, leaveRequested: boolean): boolean {
   return Boolean(game && leaveRequested && game.street === 'SETTLEMENT');
+}
+
+/** Production cash-out ordering shared by the App transition and integration tests. */
+export function finishTableExitTransition(career: CareerState, tableState: GameState): CareerState {
+  let next = career;
+  for (const pending of next.pendingCashBuyIns.filter((entry) => entry.status === 'PENDING' && entry.sessionId === tableState.sessionId)) {
+    next = cancelPendingCashBuyIn(next, pending.transactionId);
+  }
+  const human = tableState.players.find((player) => player.isHuman);
+  return leaveTable(next, human?.stack ?? 0, tableState.sessionId);
 }
 
 function levelForBigBlind(bigBlind: number): TableLevelId {
@@ -59,7 +76,7 @@ export function createNextHand(current: GameState): GameState {
     isHuman: player.isHuman,
     stack: player.isHuman ? player.stack : player.stack > 0 ? player.stack : level.buyIn,
   }));
-  const table = createTable({ mode: current.mode, tableSize: current.tableSize, smallBlind: current.smallBlind, bigBlind: current.bigBlind, dealerSeat: nextDealer, players });
+  const table = createTable({ mode: current.mode, tableSize: current.tableSize, smallBlind: current.smallBlind, bigBlind: current.bigBlind, dealerSeat: nextDealer, players, sessionId: current.sessionId, matchType: current.matchType, tableLevel: current.tableLevel, session: current.session });
   const next = startHand(table, shuffleDeck(createDeck(current.mode)));
   next.handNumber = current.handNumber + 1;
   return next;
@@ -109,9 +126,14 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const setCareer = useCareerStore((state) => state.setCareer);
   const createNewCareer = useCareerStore((state) => state.createNewCareer);
   const buyIn = useCareerStore((state) => state.buyIn);
+  const requestCashBuyIn = useCareerStore((state) => state.requestCashBuyIn);
+  const syncCareerStack = useCareerStore((state) => state.syncActiveTableStack);
+  const chooseZeroStack = useGameStore((state) => state.chooseZeroStack);
   const recordHand = useCareerStore((state) => state.recordHand);
   const leaveTable = useCareerStore((state) => state.leaveTable);
   const applyBankruptcy = useCareerStore((state) => state.applyBankruptcy);
+  const enterTournament = useCareerStore((state) => state.enterTournament);
+  const recordTournamentFinish = useCareerStore((state) => state.recordTournamentFinish);
   const storeGame = useGameStore((state) => state.game);
   const setGame = useGameStore((state) => state.setGame);
   const dispatchAction = useGameStore((state) => state.dispatchAction);
@@ -125,10 +147,17 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const opponentModels = useMemo(() => buildPlayerModels(career?.handHistory ?? []), [career?.handHistory]);
   const [view, setView] = useState<AppView>(initialView ?? (game ? 'GAME' : career ? 'CAREER' : 'HOME'));
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [cashBuyInError, setCashBuyInError] = useState<string | null>(null);
+  const [tournamentResult, setTournamentResult] = useState<TournamentState | null>(initialGame?.tournamentState ?? null);
   const recordedSettlement = useRef<string | null>(null);
+  const hydratedInitialGame = useRef(false);
 
   useEffect(() => { if (initialCareer && !storeCareer) setCareer(initialCareer); }, [initialCareer, setCareer, storeCareer]);
-  useEffect(() => { if (initialGame && !storeGame) setGame(initialGame); }, [initialGame, setGame, storeGame]);
+  useEffect(() => {
+    if (hydratedInitialGame.current || !initialGame) return;
+    hydratedInitialGame.current = true;
+    if (!storeGame) setGame(initialGame);
+  }, [initialGame, setGame, storeGame]);
   useEffect(() => {
     let active = true;
     void loadSettings();
@@ -158,15 +187,31 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     if (tableState.street !== 'SETTLEMENT' || !tableState.handId || recordedSettlement.current === tableState.handId) return;
     recordedSettlement.current = tableState.handId;
     const summary = handSummary(tableState);
-    if (summary && useCareerStore.getState().career) recordHand(summary);
+    if (summary && tableState.matchType !== 'MINI_TOURNAMENT' && useCareerStore.getState().career) recordHand(summary);
   };
 
   const finishTableExit = (tableState: GameState) => {
     recordSettledHand(tableState);
     const currentCareer = useCareerStore.getState().career;
-    const human = tableState.players.find((player) => player.isHuman);
+    if (tableState.matchType === 'MINI_TOURNAMENT') {
+      let forfeited = tableState.tournamentState;
+      if (forfeited && tableState.street === 'SETTLEMENT') {
+        try { forfeited = settleTournamentHand(forfeited, tableState); } catch { /* retain the last persisted tournament state */ }
+      }
+      if (forfeited) {
+        const result = forfeitTournament(forfeited);
+        if (currentCareer) recordTournamentFinish(result);
+        setTournamentResult(result);
+        setView('TOURNAMENT_RESULT');
+      } else {
+        setView('CAREER');
+      }
+      setGame(null);
+      return;
+    }
     if (currentCareer && currentCareer.activeTableStack !== null) {
-      leaveTable(human?.stack ?? 0);
+      const exitCareer = finishTableExitTransition(currentCareer, tableState);
+      setCareer(exitCareer);
       applyBankruptcy();
     }
     setGame(null);
@@ -193,8 +238,15 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const human = { id: 'human', name: currentCareer.nickname, seat: 0, stack: buyInResult.tableStack, isHuman: true };
     const aiNames = selectAiNames(tableSize - 1);
     const players = Array.from({ length: tableSize }, (_, seat) => seat === 0 ? human : { id: `ai-${seat}`, name: aiNames[seat - 1], seat, stack: buyInResult.level.buyIn });
-    const table = createTable({ mode, tableSize, smallBlind: buyInResult.level.smallBlind, bigBlind: buyInResult.level.bigBlind, players, dealerSeat: 0 });
+    const table = createTable({ mode, tableSize, smallBlind: buyInResult.level.smallBlind, bigBlind: buyInResult.level.bigBlind, players, dealerSeat: 0, sessionId: buyInResult.sessionId, matchType: 'CASH', tableLevel: level });
     setGame(startHand(table, shuffleDeck(createDeck(mode))));
+    setView('GAME');
+  };
+  const enterMiniTournament = (mode: GameMode, level: TableLevelId) => {
+    const tournament = enterTournament(mode, level);
+    const hand = startTournamentHand(tournament);
+    setTournamentResult(null);
+    setGame({ ...hand, tournamentState: tournament });
     setView('GAME');
   };
   const handleLeave = () => {
@@ -213,21 +265,81 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const continueHand = () => {
     const current = useGameStore.getState().game;
     if (!current || current.street !== 'SETTLEMENT') return;
-    if (leaveRequested || current.players.find((player) => player.isHuman)?.stack === 0) {
+    const human = current.players.find((player) => player.isHuman);
+    let nextCareer = useCareerStore.getState().career;
+    if (current.matchType === 'MINI_TOURNAMENT' && current.tournamentState) {
+      const advanced = settleTournamentHand(current.tournamentState, current);
+      if (advanced.players.length === 1) {
+        const finished = finishTournament(advanced).state;
+        setTournamentResult(finished);
+        if (useCareerStore.getState().career) recordTournamentFinish(finished);
+        setGame(null);
+        setView('TOURNAMENT_RESULT');
+        return;
+      }
+      const nextHand = startTournamentHand(advanced);
+      setGame({ ...nextHand, tournamentState: advanced });
+      return;
+    }
+    if (nextCareer && human && current.matchType !== 'MINI_TOURNAMENT') {
+      nextCareer = syncActiveTableStack(nextCareer, human.stack);
+      const pending = nextCareer.pendingCashBuyIns.find((entry) => entry.sessionId === current.sessionId && entry.status === 'PENDING');
+      if (pending) {
+        const applied = applyPendingCashBuyIn(nextCareer, pending, human.stack);
+        nextCareer = applied.career;
+        if (applied.appliedAmount > 0) {
+          const players = current.players.map((player) => player.isHuman ? { ...player, stack: player.stack + applied.appliedAmount } : player);
+          nextCareer = syncActiveTableStack(nextCareer, human.stack + applied.appliedAmount);
+          setCareer(nextCareer);
+          setGame(createNextHand({ ...current, players }));
+          return;
+        }
+      }
+      setCareer(nextCareer);
+    }
+    if (human?.stack === 0) {
+      // A zero stack is a choice point. The leave action is the explicit
+      // cash-out path; continue waits for a rebuy request from the UI.
+      return;
+    }
+    if (leaveRequested) {
       finishTableExit(current);
       return;
     }
     setGame(createNextHand(current));
   };
+  const requestTableBuyIn = (targetStack: number) => {
+    const current = useGameStore.getState().game;
+    const currentCareer = useCareerStore.getState().career;
+    if (!current || !currentCareer || current.matchType === 'MINI_TOURNAMENT') return;
+    const human = current.players.find((player) => player.isHuman);
+    if (!human) return;
+    syncCareerStack(human.stack);
+    const session = current.session ?? (current.sessionId && current.tableLevel ? { sessionId: current.sessionId, matchType: current.matchType ?? 'CASH', tableLevel: current.tableLevel, mode: current.mode } : null);
+    if (!session || session.matchType !== 'CASH') return;
+    try {
+      requestCashBuyIn(session, targetStack);
+      setCashBuyInError(null);
+    } catch (error) {
+      setCashBuyInError(error instanceof Error ? error.message : '买入失败');
+    }
+  };
+  const cancelTableBuyIn = () => setCashBuyInError(null);
   const navigate = (next: AppView) => setView(next);
   let content: React.ReactNode;
   if (view === 'HOME') content = <HomePage career={career} loadError={loadError} onContinue={() => setView(career ? 'CAREER' : 'HOME')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
-  else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onNavigate={(next) => setView(next)} />;
+  else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onEnterTournament={() => setView('TOURNAMENT_SELECT')} onNavigate={(next) => setView(next)} />;
   else if (view === 'TABLE_SELECT' && career) content = <TableSelectPage career={career} onEnter={enterTable} />;
-  else if (view === 'GAME' && game) content = <GamePage game={game} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack)} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+  else if (view === 'TOURNAMENT_SELECT' && career) content = <TournamentSelectPage career={career} onEnter={enterMiniTournament} onBack={() => setView('CAREER')} />;
+  else if (view === 'TOURNAMENT_RESULT' && tournamentResult) content = <TournamentResultPage tournament={tournamentResult} onDone={() => setView('CAREER')} />;
+  else if (view === 'GAME' && game) {
+    const activePending = Boolean(career?.pendingCashBuyIns.some((entry) => entry.status === 'PENDING' && entry.sessionId === game.sessionId));
+    const currentLevel = getTableLevel(game.tableLevel ?? levelForBigBlind(game.bigBlind));
+    content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+  }
   else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
   else if (view === 'SETTINGS') content = <SettingsPage />;
   else content = <HomePage career={career} loadError={loadError} onContinue={() => setView('CAREER')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
-  return <div className="app-shell" style={{ '--color-bg': '#FFFFFF' } as React.CSSProperties}><header className="app-header"><button className="brand-button" disabled={Boolean(game)} onClick={() => navigate('HOME')}>本地德州扑克生涯</button><nav>{career && !game && <><button className="link-button" onClick={() => navigate('CAREER')}>生涯</button><button className="link-button" onClick={() => navigate('TABLE_SELECT')}>牌桌</button><button className="link-button" onClick={() => navigate('SETTINGS')}>设置</button></>}</nav></header>{content}</div>;
+  return <div className="app-shell" style={{ '--color-bg': '#FFFFFF' } as React.CSSProperties}><header className="app-header"><button className="brand-button" disabled={Boolean(game)} onClick={() => navigate('HOME')}>本地德州扑克生涯</button><nav>{career && !game && <><button className="link-button" onClick={() => navigate('CAREER')}>生涯</button><button className="link-button" onClick={() => navigate('TABLE_SELECT')}>牌桌</button><button className="link-button" onClick={() => navigate('SETTINGS')}>设置</button></>}</nav></header>{cashBuyInError && game && <p className="cash-buy-in-status cash-buy-in-status--error" role="alert">{cashBuyInError}</p>}{content}</div>;
 }

@@ -12,7 +12,7 @@ describe('save migrations', () => {
       unlockedLevels: [1, 2],
       handHistory: [],
     });
-    expect(migrated.saveVersion).toBe(1);
+    expect(migrated.saveVersion).toBe(2);
     expect(migrated.career.nickname).toBe('旧玩家');
     expect(migrated.career.currentFunds).toBe(12_500);
     expect(migrated.career.peakFunds).toBe(18_000);
@@ -25,9 +25,11 @@ describe('save migrations', () => {
     expect(migrated.career.handHistory[0].potResults).toEqual([]);
   });
 
-  it('accepts current version data without mutating it', () => {
+  it('migrates a v1 career record without mutating it', () => {
     const input = { saveVersion: 1, career: { nickname: '当前玩家', currentFunds: 10_000 } };
-    expect(migrateSave(input)).toEqual(input);
+    const migrated = migrateSave(input);
+    expect(migrated.saveVersion).toBe(2);
+    expect(migrated.career.financialTransactions).toEqual([]);
     expect(input).toEqual({ saveVersion: 1, career: { nickname: '当前玩家', currentFunds: 10_000 } });
   });
 

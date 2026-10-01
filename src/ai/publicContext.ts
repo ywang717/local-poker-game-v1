@@ -3,6 +3,7 @@ import { getLegalActions } from '../game/betting';
 import type { ActionRecord, GameState, LegalAction, PlayerState } from '../game/gameState';
 import type { Position } from './preflopRanges';
 import type { PlayerModel } from './playerModel';
+import { positionForDetailed, type DetailedPosition } from './positionStrategy';
 
 export type PublicPlayerView = Omit<PlayerState, 'holeCards'>;
 export type PublicSelfView = PublicPlayerView & { holeCards: Card[] };
@@ -10,6 +11,7 @@ export type PublicSidePot = { amount: number; eligiblePlayerIds: string[] };
 
 export type PublicTableContext = {
   aiPlayerId: string;
+  handId?: string;
   aiSeat: number;
   mode: GameState['mode'];
   tableSize: GameState['tableSize'];
@@ -25,6 +27,8 @@ export type PublicTableContext = {
   potAmount: number;
   toCall: number;
   position: Position;
+  /** V2 fixed-seat label; `position` remains the legacy coarse label for Task 3 compatibility. */
+  detailedPosition?: DetailedPosition;
   communityCards: Card[];
   self: PublicSelfView;
   players: PublicPlayerView[];
@@ -40,7 +44,7 @@ export function positionFor(state: GameState, player: PlayerState): Position {
   if (player.seat === state.smallBlindSeat || player.seat === state.bigBlindSeat) return 'BLINDS';
   // Position is fixed from the occupied seats at hand start. Folded seats
   // remain part of the ring and must not cause the remaining ranges to shift.
-  const seats = state.players.map((entry) => entry.seat).sort((left, right) => left - right);
+  const seats = [...(state.initialOccupiedSeats ?? state.players.map((entry) => entry.seat))].sort((left, right) => left - right);
   const dealerIndex = seats.indexOf(state.dealerSeat);
   const playerIndex = seats.indexOf(player.seat);
   if (dealerIndex < 0 || playerIndex < 0) return 'MIDDLE';
@@ -76,6 +80,7 @@ export function toPublicContext(
   const potAmount = state.players.reduce((sum, player) => sum + player.handContribution, 0);
   return {
     aiPlayerId,
+    handId: state.handId ?? undefined,
     aiSeat: selfState.seat,
     mode: state.mode,
     tableSize: state.tableSize,
@@ -91,6 +96,7 @@ export function toPublicContext(
     potAmount,
     toCall: Math.max(0, state.currentBet - selfState.streetContribution),
     position: positionFor(state, selfState),
+    detailedPosition: positionForDetailed(state, selfState.id),
     communityCards: [...state.communityCards],
     self: { ...publicPlayer(selfState), holeCards: [...selfState.holeCards] },
     players,

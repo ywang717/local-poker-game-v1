@@ -1,6 +1,9 @@
 import type { Card } from './cards';
 import type { GameMode } from './rules';
 import type { PotRefund } from './pot';
+import type { MatchSession, MatchType } from '../match/matchTypes';
+import type { TableLevelId } from '../career/tableLevels';
+import type { TournamentState } from '../tournament/types';
 
 export const SUPPORTED_TABLE_SIZES = [2, 3, 4, 5, 6, 8, 9] as const;
 export type TableSize = (typeof SUPPORTED_TABLE_SIZES)[number];
@@ -22,6 +25,10 @@ export type TableConfig = {
   bigBlind: number;
   players: readonly TablePlayerConfig[];
   dealerSeat?: number;
+  sessionId?: string;
+  matchType?: MatchType;
+  tableLevel?: TableLevelId;
+  session?: MatchSession;
 };
 
 export type PlayerState = {
@@ -66,9 +73,23 @@ export type ActionRecord = {
   action: PlayerAction['kind'];
   amount: number;
   totalTo: number;
+  /** Optional metadata used by public AI observers; old records omit it. */
+  isBlind?: boolean;
+  isFullRaise?: boolean;
 };
 
 export type GameState = {
+  /** V2 session metadata; optional for source compatibility with hand fixtures. */
+  sessionId?: string;
+  matchType?: MatchType;
+  tableLevel?: TableLevelId;
+  /** Mini-tournament metadata; absent on legacy/cash snapshots. */
+  tournamentBlindLevel?: number;
+  tournamentHandsAtLevel?: number;
+  tournamentPlayersRemaining?: number;
+  /** Full tournament session metadata, persisted with the current hand. */
+  tournamentState?: TournamentState;
+  session?: MatchSession;
   handId: string | null;
   handNumber: number;
   mode: GameMode;
@@ -76,6 +97,8 @@ export type GameState = {
   smallBlind: number;
   bigBlind: number;
   dealerSeat: number;
+  /** Occupied seats when the hand began; folds and later seat filtering never alter this ring. */
+  initialOccupiedSeats?: number[];
   smallBlindSeat: number | null;
   bigBlindSeat: number | null;
   street: Street;

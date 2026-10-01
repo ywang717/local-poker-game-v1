@@ -55,7 +55,15 @@ function winnerIdsForPot(
   const eligible = pot.eligiblePlayerIds
     .map((id) => playersById.get(id))
     .filter((player): player is SettlementPlayer => Boolean(player && !player.folded));
-  if (eligible.length === 0) throw new Error(`Pot ${pot.toContribution} has no eligible players`);
+  // A short all-in can be the only remaining live player after everyone else
+  // folds. Higher contribution layers then have no contributor eligible by
+  // amount, but the sole live player still wins the folded chips. Treat it as
+  // an uncontested pot instead of creating an unclaimable side pot.
+  if (eligible.length === 0) {
+    const live = [...playersById.values()].filter((player) => !player.folded);
+    if (live.length === 0) throw new Error(`Pot ${pot.toContribution} has no eligible players`);
+    return live.length === 1 ? [live[0].id] : [];
+  }
   if (eligible.length === 1) return [eligible[0].id];
   let best: HandEvaluation | undefined;
   let winners: SettlementPlayer[] = [];

@@ -7,13 +7,23 @@ import { nextDealerSeat } from '../game/dealer';
 import { settleGameState } from '../game/handSettlement';
 import type { GameState, TableSize } from '../game/gameState';
 import type { GameMode } from '../game/rules';
+import type { AIDifficulty } from '../ai/difficulty';
+import type { PublicTableContext } from '../ai/publicContext';
+import type { PlayerAction } from '../game/gameState';
 
 const STARTING_STACK = 1_000;
 const SMALL_BLIND = 5;
 const BIG_BLIND = 10;
 const MAX_ACTIONS_PER_HAND = 1_000;
 
-export type SimulationOptions = { mode: GameMode; hands: number; seed: number; tableSize: TableSize };
+export type SimulationOptions = {
+  mode: GameMode; hands: number; seed: number; tableSize: TableSize;
+  difficulty?: AIDifficulty;
+  /** Optional independent streams for card dealing and AI decisions. */
+  dealSeed?: number;
+  decisionSeed?: number;
+  onAction?: (context: PublicTableContext, action: PlayerAction) => void;
+};
 
 export type SimulationReport = {
   mode: GameMode; tableSize: TableSize; handsRequested: number; handsCompleted: number;
@@ -22,7 +32,7 @@ export type SimulationReport = {
   chipConservationFailures: number; rebuyCount: number; maxSidePots: number; maxActions: number; digest: string;
 };
 
-function seeded(seed: number): () => number {
+export function seeded(seed: number): () => number {
   let value = seed >>> 0;
   return () => { value = (value * 1664525 + 1013904223) >>> 0; return value / 0x1_0000_0000; };
 }
@@ -58,7 +68,12 @@ function newReport(options: SimulationOptions): SimulationReport {
 /** Runs one seeded table continuously; stacks and dealer position survive hand boundaries. */
 export function runContinuousTableSimulation(options: SimulationOptions): SimulationReport {
   if (!Number.isSafeInteger(options.hands) || options.hands < 1) throw new Error('Simulation hands must be a positive integer');
-  const rng = seeded(options.seed);
+  // Keep the legacy rules harness byte-for-byte reproducible when no stream
+  // override is supplied. The V2 experience harness passes both overrides to
+  // isolate card dealing from AI decisions.
+  const sharedRng = options.dealSeed === undefined && options.decisionSeed === undefined ? seeded(options.seed) : undefined;
+  const dealRng = sharedRng ?? seeded(options.dealSeed ?? ((options.seed ^ 0x9e3779b9) >>> 0));
+  const decisionRng = sharedRng ?? seeded(options.decisionSeed ?? ((options.seed ^ 0x243f6a88) >>> 0));
   const report = newReport(options);
   const outcomes: string[] = [];
   let players = playersFor(options.tableSize);
@@ -72,7 +87,7 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
     const table = createTable({ mode: options.mode, tableSize: options.tableSize, smallBlind: SMALL_BLIND, bigBlind: BIG_BLIND, dealerSeat, players });
     table.handNumber = hand;
     const preHandChips = table.players.reduce((sum, player) => sum + player.stack, 0);
-    const stateAtStart = startHand(table, shuffleDeck(createDeck(options.mode), rng));
+    const stateAtStart = startHand(table, shuffleDeck(createDeck(options.mode), dealRng));
     // The production engine uses a UUID for human hand IDs; simulation IDs
     // must stay reproducible for fixed seeds.
     stateAtStart.handId = `sim-${options.mode}-${options.tableSize}-${hand + 1}`;
@@ -86,7 +101,8 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
       const actor = state.players.find((player) => player.seat === state.actingSeat);
       if (!actor) { report.illegalActions += 1; throw new Error(`Missing acting player at ${state.handId}`); }
       const context = toPublicContext(state, actor.id);
-      const action = chooseAction(context, 3, PERSONALITIES.BALANCED, rng);
+      const action = chooseAction(context, options.difficulty ?? 3, PERSONALITIES.BALANCED, decisionRng);
+      options.onAction?.(context, action);
       const transition = applyAction(state, { playerId: actor.id, action });
       if (!transition.ok) { report.illegalActions += 1; throw new Error(`Illegal action at ${state.handId}: ${transition.error.message}`); }
       state = transition.state;
@@ -123,4 +139,23 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
 
 export function runSimulation(options: SimulationOptions): SimulationReport {
   return runContinuousTableSimulation(options);
+}
+
+export type RulesRegressionMatrixOptions = { handsPerCell?: number; seed?: number };
+
+/** Run the release rules matrix without changing its fourteen mode/seat cells. */
+export function runRulesRegressionMatrix(options: RulesRegressionMatrixOptions = {}): SimulationReport[] {
+  const handsPerCell = options.handsPerCell ?? 1_000;
+  if (!Number.isSafeInteger(handsPerCell) || handsPerCell < 1) throw new Error('handsPerCell must be a positive integer');
+  const seed = options.seed ?? 0x1400_0000;
+  const reports: SimulationReport[] = [];
+  for (const mode of ['STANDARD', 'SHORT_DECK'] as const) {
+    for (const tableSize of [2, 3, 4, 5, 6, 8, 9] as const) {
+      reports.push(runSimulation({
+        mode, tableSize, hands: handsPerCell,
+        seed: seed + tableSize + (mode === 'SHORT_DECK' ? 100 : 0),
+      }));
+    }
+  }
+  return reports;
 }

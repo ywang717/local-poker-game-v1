@@ -31,7 +31,7 @@ describe('IndexedDB save system', () => {
     state.street = 'FLOP';
     const snapshot: HandSnapshot = { saveVersion: 1, savedAt: '2026-09-30T00:00:00.000Z', state };
     await saveHandSnapshot(snapshot);
-    expect(await loadHandSnapshot()).toEqual(snapshot);
+    expect(await loadHandSnapshot()).toEqual({ ...snapshot, saveVersion: 2 });
   });
 
   it('rotates the previous valid career save into a backup and recovers it when current is corrupt', async () => {
@@ -53,6 +53,16 @@ describe('IndexedDB save system', () => {
     expect(result.status).toBe('corrupt');
     expect(result.career).toBeNull();
     expect(result.error).toMatch(/无法恢复|recover/i);
+  });
+
+  it('rejects an unsupported current hand snapshot and recovers the valid backup', async () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 5, bigBlind: 10, players: [{ id: 'a', seat: 0, stack: 100 }, { id: 'b', seat: 1, stack: 100 }] });
+    const state = startHand(table, createDeck('STANDARD'));
+    await putRawRecord('currentHand', 'backup', { saveVersion: 1, savedAt: '2026-01-01T00:00:00Z', state });
+    await putRawRecord('currentHand', 'current', { saveVersion: 99, savedAt: '2026-01-01T00:00:00Z', state });
+    const loaded = await loadHandSnapshot();
+    expect(loaded?.saveVersion).toBe(2);
+    expect(loaded?.state.matchType).toBe('CASH');
   });
 
   it('trims saved history to the latest 500 entries', async () => {

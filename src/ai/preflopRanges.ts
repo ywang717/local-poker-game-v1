@@ -1,8 +1,10 @@
 import type { Card } from '../game/cards';
 import { getRuleConfig, type GameMode } from '../game/rules';
 import type { AIDifficulty } from './difficulty';
+import type { DetailedPosition } from './positionStrategy';
 
-export type Position = 'HEADS_UP' | 'EARLY' | 'MIDDLE' | 'LATE' | 'BLINDS';
+/** Legacy coarse position labels retained for the existing decision engine. */
+export type Position = 'HEADS_UP' | 'EARLY' | 'MIDDLE' | 'LATE' | 'BLINDS' | DetailedPosition;
 
 export type PreflopProfile = {
   mode: GameMode;
@@ -28,6 +30,14 @@ const positionAdjustment: Readonly<Record<Position, number>> = {
   MIDDLE: 0.02,
   LATE: -0.06,
   BLINDS: 0.04,
+  UTG: 0.1,
+  UTG1: 0.08,
+  MP: 0.04,
+  HJ: -0.01,
+  CO: -0.05,
+  BTN: -0.08,
+  SB: 0.05,
+  BB: 0.04,
 };
 
 export function getPreflopProfile(

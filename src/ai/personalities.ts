@@ -17,5 +17,14 @@ export const PERSONALITIES: Readonly<Record<PersonalityId, AIPersonality>> = {
 };
 
 export function getPersonality(personality: PersonalityId | AIPersonality): AIPersonality {
-  return typeof personality === 'string' ? { ...PERSONALITIES[personality] } : { ...personality };
+  const value = typeof personality === 'string' ? PERSONALITIES[personality] : personality;
+  return {
+    ...value,
+    // Personality is a bounded nudge. It cannot turn a fold range into an
+    // unrestricted range or bypass the explicit all-in gates.
+    looseness: Math.max(-0.12, Math.min(0.12, value.looseness)),
+    aggression: Math.max(-0.12, Math.min(0.12, value.aggression)),
+    callBias: Math.max(-0.12, Math.min(0.12, value.callBias)),
+    bluffFrequency: Math.max(-0.1, Math.min(0.1, value.bluffFrequency)),
+  };
 }

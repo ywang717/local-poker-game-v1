@@ -1,0 +1,2 @@
+export type PendingCashBuyIn = { transactionId: string; sessionId: string; requestedAmount: number; reservedAmount: number; maxStack?: number; status: 'PENDING' | 'APPLIED' | 'REFUNDED'; appliedAmount?: number; refundedAmount?: number };
+export type FinancialTransaction = { transactionId: string; sessionId: string; kind: 'INITIAL_BUY_IN' | 'TOP_UP' | 'BUY_IN_REFUND' | 'TABLE_CASH_OUT' | 'TOURNAMENT_ENTRY' | 'TOURNAMENT_CHAMPION_REWARD'; amount: number; status: 'APPLIED' | 'REFUNDED'; createdAt: string };

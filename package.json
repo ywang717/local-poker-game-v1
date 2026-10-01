@@ -10,8 +10,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
+    "test:ai": "vitest run tests/ai",
+    "test:ai:experience": "vitest run tests/ai/experienceSimulation.test.ts tests/ai/experienceMetrics.test.ts",
     "typecheck": "tsc -b --pretty false",
     "test:simulation": "vitest run tests/simulation tests/release"
+    ,"test:cash-buyin": "vitest run tests/career/cashBuyIn.test.ts tests/career/cashBuyInConservation.test.ts tests/storage/cashBuyInRecovery.test.ts"
+    ,"test:tournament": "vitest run tests/tournament tests/game/dealerDynamicSeats.test.ts"
   },
   "dependencies": {
     "@hivetech/poker-engine": "1.0.1",

@@ -126,6 +126,10 @@ h3 { margin-bottom: 14px; font-size: 15px; }
 .settings-list { display: grid; max-width: 560px; gap: 1px; border: 1px solid #E5E5E5; border-radius: 12px; overflow: hidden; }
 .settings-list label { display: flex; justify-content: space-between; padding: 16px; background: #FAFAFA; border-bottom: 1px solid #E5E5E5; }
 .settings-list label:last-child { border-bottom: 0; }
+.cash-buy-in-status { max-width: 1200px; margin: 0 auto 10px; padding: 8px 12px; border-radius: 8px; color: #245D9C; background: #EEF4FC; font-size: 13px; }
+.cash-buy-in-status--error { color: #A33A3A; background: #FFF2F2; }
+.cash-buy-in-modal { width: min(460px, calc(100vw - 32px)); max-width: min(460px, calc(100vw - 32px)); }
+.cash-buy-in-modal button { min-height: 44px; }
 
 @media (max-width: 1320px) {
   .app-header { padding: 0 24px; }
@@ -193,6 +197,8 @@ h3 { margin-bottom: 14px; font-size: 15px; }
   .history-layout { grid-template-columns: 1fr; }
   .history-row { min-height: 56px; padding: 12px; }
   .settings-list label { min-height: 52px; gap: 12px; }
+  .cash-buy-in-modal { width: calc(100vw - 24px); max-width: calc(100vw - 24px); }
+  .cash-buy-in-modal button { min-height: 44px; }
 }
 
 @media (orientation: landscape) and (max-height: 600px) {

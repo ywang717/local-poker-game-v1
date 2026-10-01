@@ -1,6 +1,6 @@
 import { HAND_HISTORY_LIMIT } from '../career/handHistory';
 import type { CareerState } from '../career/careerState';
-import { migrateSave } from './migrations';
+import { migrateHandSnapshot, migrateSave } from './migrations';
 import { deleteDatabase, readRecord, writeRecords, type StoreName } from './database';
 import { CURRENT_SAVE_VERSION, type HandSnapshot, type LoadResult, type VersionedSave } from '../types/persistence';
 import type { SettingsState } from '../store/settingsStore';
@@ -69,15 +69,17 @@ export async function loadCareer(): Promise<LoadResult> {
 }
 
 export async function saveHandSnapshot(snapshot: HandSnapshot): Promise<void> {
-  if (snapshot.saveVersion !== CURRENT_SAVE_VERSION) throw new Error('Unsupported hand snapshot version');
-  await rotateAndWrite('currentHand', clone(snapshot));
+  if (snapshot.saveVersion !== CURRENT_SAVE_VERSION && snapshot.saveVersion !== 1) throw new Error('Unsupported hand snapshot version');
+  await rotateAndWrite('currentHand', migrateHandSnapshot(snapshot));
 }
 
 export async function loadHandSnapshot(): Promise<HandSnapshot | null> {
   const current = await readRecord<HandSnapshot>('currentHand', 'current');
   const backup = await readRecord<HandSnapshot>('currentHand', 'backup');
   for (const candidate of [current, backup]) {
-    if (candidate?.saveVersion === CURRENT_SAVE_VERSION && candidate.state && Array.isArray(candidate.state.deck)) return clone(candidate);
+    if (candidate && candidate.state && Array.isArray(candidate.state.deck)) {
+      try { return clone(migrateHandSnapshot(candidate)); } catch { /* try backup */ }
+    }
   }
   return null;
 }

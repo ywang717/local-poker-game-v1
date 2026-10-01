@@ -1,8 +1,12 @@
 import { create } from 'zustand';
-import { applyBankruptcyProtection, buyIn, createCareer, leaveTable, recordHand } from '../career/careerService';
+import { applyBankruptcyProtection, buyIn, createCareer, enterTournamentForCareer, leaveTable, recordHand, recordTournamentFinish, syncActiveTableStack } from '../career/careerService';
+import { applyPendingCashBuyIn, cancelPendingCashBuyIn, requestCashBuyIn } from '../career/cashBuyInService';
+import type { MatchSession } from '../match/matchTypes';
 import type { CareerState } from '../career/careerState';
 import type { HandSummary } from '../career/handHistory';
 import type { TableLevelId } from '../career/tableLevels';
+import type { GameMode } from '../game/rules';
+import type { TournamentState } from '../tournament/types';
 import { loadCareer, saveCareer } from '../storage/saveSystem';
 
 let careerPersistenceQueue: Promise<void> = Promise.resolve();
@@ -19,6 +23,12 @@ export type CareerStore = {
   leaveTable: (tableStack: number) => CareerState;
   recordHand: (summary: HandSummary) => CareerState;
   applyBankruptcy: () => CareerState;
+  requestCashBuyIn: (session: MatchSession, targetStack: number) => ReturnType<typeof requestCashBuyIn>;
+  applyPendingCashBuyIn: (pending: Parameters<typeof applyPendingCashBuyIn>[1], settledStack: number) => ReturnType<typeof applyPendingCashBuyIn>;
+  cancelPendingCashBuyIn: (transactionId: string) => CareerState;
+  syncActiveTableStack: (stack: number) => CareerState;
+  enterTournament: (mode: GameMode, level: TableLevelId, tournamentId?: string) => TournamentState;
+  recordTournamentFinish: (state: TournamentState) => CareerState;
   save: () => Promise<void>;
   load: () => Promise<Awaited<ReturnType<typeof loadCareer>>>;
 };
@@ -63,6 +73,42 @@ export const useCareerStore = create<CareerStore>((set, get) => ({
     set({ career: next });
     queueCareerSave(next);
     return next;
+  },
+  requestCashBuyIn: (session, targetStack) => {
+    const career = get().career;
+    if (!career) throw new Error('Career has not been created');
+    const result = requestCashBuyIn(career, session, targetStack);
+    set({ career: result.career }); queueCareerSave(result.career); return result;
+  },
+  applyPendingCashBuyIn: (pending, settledStack) => {
+    const career = get().career;
+    if (!career) throw new Error('Career has not been created');
+    const result = applyPendingCashBuyIn(career, pending, settledStack);
+    set({ career: result.career }); queueCareerSave(result.career); return result;
+  },
+  cancelPendingCashBuyIn: (transactionId) => {
+    const career = get().career;
+    if (!career) throw new Error('Career has not been created');
+    const next = cancelPendingCashBuyIn(career, transactionId);
+    set({ career: next }); queueCareerSave(next); return next;
+  },
+  syncActiveTableStack: (stack) => {
+    const career = get().career;
+    if (!career) throw new Error('Career has not been created');
+    const next = syncActiveTableStack(career, stack);
+    set({ career: next }); queueCareerSave(next); return next;
+  },
+  enterTournament: (mode, level, tournamentId) => {
+    const career = get().career;
+    if (!career) throw new Error('Career has not been created');
+    const result = enterTournamentForCareer(career, mode, level, tournamentId);
+    set({ career: result.career }); queueCareerSave(result.career); return result.tournament;
+  },
+  recordTournamentFinish: (state) => {
+    const career = get().career;
+    if (!career) throw new Error('Career has not been created');
+    const next = recordTournamentFinish(career, state);
+    set({ career: next }); queueCareerSave(next); return next;
   },
   save: async () => {
     const career = get().career;
