@@ -11,8 +11,8 @@ export type ExperienceMetrics = {
 };
 export type ExperienceReport = ExperienceMetrics & { metrics: ExperienceMetrics; hands?: number; showdowns?: number; handSamples: Map<string, { vpip: boolean; pfr: boolean }> };
 export type ExperienceObservationContext = Pick<PublicTableContext, 'street' | 'toCall' | 'potAmount'> & {
-  handId?: string; aiPlayerId?: string; bigBlind?: number; currentBet?: number;
-  actionHistory?: PublicTableContext['actionHistory']; players?: PublicTableContext['players']; self?: { id?: string; stack: number };
+  handId?: string; aiPlayerId?: string; bigBlind?: number; currentBet?: number; lastFullRaise?: number;
+  actionHistory?: PublicTableContext['actionHistory']; players?: PublicTableContext['players']; self?: { id?: string; stack: number; streetContribution?: number };
 };
 
 function pair(): MetricPair { return { numerator: 0, denominator: 0 }; }
@@ -28,7 +28,18 @@ export function createExperienceReport(): ExperienceReport {
 function aggressive(action: PlayerAction): boolean { return action.kind === 'bet-to' || action.kind === 'raise-to' || action.kind === 'all-in'; }
 function voluntary(action: PlayerAction): boolean { return action.kind === 'call' || aggressive(action); }
 function allInIsCall(context: ExperienceObservationContext, action: PlayerAction): boolean { return action.kind === 'all-in' && context.toCall > 0 && (context.self?.stack ?? 0) <= context.toCall; }
-function preflopAggression(context: ExperienceObservationContext, action: PlayerAction): boolean { return (action.kind === 'bet-to' || action.kind === 'raise-to') || (action.kind === 'all-in' && !allInIsCall(context, action)); }
+function allInIsFullRaise(context: ExperienceObservationContext, action: PlayerAction): boolean {
+  if (action.kind !== 'all-in' || allInIsCall(context, action)) return false;
+  const explicit = (action as PlayerAction & { isFullRaise?: boolean }).isFullRaise;
+  if (explicit !== undefined) return explicit;
+  if (context.toCall <= 0) return true;
+  const contribution = context.self?.streetContribution ?? 0;
+  const target = contribution + (context.self?.stack ?? 0);
+  const currentBet = context.currentBet ?? contribution + context.toCall;
+  const lastFullRaise = context.lastFullRaise ?? (context.bigBlind ?? 1);
+  return target - currentBet >= lastFullRaise;
+}
+function preflopAggression(context: ExperienceObservationContext, action: PlayerAction): boolean { return action.kind === 'bet-to' || action.kind === 'raise-to' || allInIsFullRaise(context, action); }
 
 /** Observe a public decision. Numerators and denominators stay explicit. */
 export function recordExperienceAction(report: ExperienceReport, context: ExperienceObservationContext, action: PlayerAction): ExperienceReport {
@@ -51,9 +62,10 @@ export function recordExperienceAction(report: ExperienceReport, context: Experi
     const lastPreflopAggressor = [...context.actionHistory].reverse().find((entry) => entry.street === 'PRE_FLOP' && (entry.action === 'raise-to' || entry.action === 'bet-to'));
     const ownActedStreet = currentStreetActions.some((entry) => entry.playerId === context.aiPlayerId);
     if (lastPreflopAggressor?.playerId === context.aiPlayerId && !ownActedStreet) { m.cBet.denominator += 1; if (aggressive(action) && !allInIsCall(context, action)) m.cBet.numerator += 1; }
-    const ownCheck = currentStreetActions.some((entry) => entry.playerId === context.aiPlayerId && entry.action === 'check');
-    const opponentBetAfterCheck = currentStreetActions.some((entry) => entry.playerId !== context.aiPlayerId && (entry.action === 'bet-to' || entry.action === 'raise-to' || entry.action === 'all-in'));
-    if (ownCheck && opponentBetAfterCheck && (action.kind === 'raise-to' || action.kind === 'bet-to' || action.kind === 'all-in')) { m.checkRaise.denominator += 1; if (!allInIsCall(context, action)) m.checkRaise.numerator += 1; }
+    const ownCheckIndex = currentStreetActions.findIndex((entry) => entry.playerId === context.aiPlayerId && entry.action === 'check');
+    const opponentBetIndex = currentStreetActions.findIndex((entry, index) => index > ownCheckIndex && entry.playerId !== context.aiPlayerId && (entry.action === 'bet-to' || entry.action === 'raise-to' || entry.action === 'all-in'));
+    const ownResponseAfterBet = currentStreetActions.some((entry, index) => index > opponentBetIndex && entry.playerId === context.aiPlayerId);
+    if (ownCheckIndex >= 0 && opponentBetIndex >= 0 && !ownResponseAfterBet) { m.checkRaise.denominator += 1; if (action.kind === 'raise-to' || action.kind === 'bet-to' || allInIsFullRaise(context, action)) m.checkRaise.numerator += 1; }
   }
   if (action.kind === 'all-in') m.activeAllIn.numerator += 1;
   if ((action.kind === 'call' || allInIsCall(context, action)) && context.toCall > 0) { m.callAllIn.denominator += 1; if (allInIsCall(context, action) || ((context as { self?: { stack: number } }).self?.stack !== undefined && (context as { self: { stack: number } }).self.stack <= context.toCall)) m.callAllIn.numerator += 1; }
@@ -65,9 +77,18 @@ export function recordExperienceAction(report: ExperienceReport, context: Experi
 export const observeExperienceAction = recordExperienceAction;
 export const createExperienceAccumulator = createExperienceReport;
 
+export function recordExperienceHand(report: ExperienceReport, outcome: { showdown: boolean }): ExperienceReport {
+  report.hands = (report.hands ?? 0) + 1;
+  report.metrics.showdown.denominator += 1;
+  if (outcome.showdown) { report.showdowns = (report.showdowns ?? 0) + 1; report.metrics.showdown.numerator += 1; }
+  return report;
+}
+
+/** Record only a showdown event; call recordExperienceHand at hand end for the denominator. */
 export function recordExperienceShowdown(report: ExperienceReport): ExperienceReport {
   report.showdowns = (report.showdowns ?? 0) + 1;
   report.metrics.showdown.numerator += 1;
-  report.metrics.showdown.denominator += 1;
   return report;
 }
+
+export const recordExperienceHandEnd = recordExperienceHand;

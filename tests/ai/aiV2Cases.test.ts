@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { chooseAction } from '../../src/ai/aiEngine';
 import { PERSONALITIES } from '../../src/ai/personalities';
+import { getPersonality } from '../../src/ai/personalities';
 import type { PublicTableContext } from '../../src/ai/publicContext';
 import { c } from '../game/cards.test';
 
@@ -37,7 +38,8 @@ describe('V2 deterministic pre-flop matrix', () => {
 
   it.each(['CO', 'BTN', 'BB'] as const)('uses position-specific behavior for %s', (position) => {
     const action = chooseAction(context([[14, 'spades'], [5, 'spades']], position === 'BB' ? 'BLINDS' : 'LATE', position, facingOpen), 4, PERSONALITIES.BALANCED, () => 0);
-    expect(['fold', 'call', 'raise-to', 'bet-to', 'all-in']).toContain(action.kind);
+    if (position === 'CO' || position === 'BTN') expect(['raise-to', 'bet-to']).toContain(action.kind);
+    else expect(action.kind).toBe('call');
   });
 
   it('uses an independent 4-Bet branch and allows a bounded A5s bluff', () => {
@@ -68,5 +70,21 @@ describe('V2 deterministic pre-flop matrix', () => {
     const tournament = chooseAction(table, 3, PERSONALITIES.BALANCED, () => 0.5, { matchType: 'MINI_TOURNAMENT', tournament: { effectiveStackBB: 100, pressure: 0.2, playersRemaining: 3 } });
     expect(cash.kind).toBe('call');
     expect(tournament.kind).toBe('fold');
+    const staged = chooseAction(table, 3, PERSONALITIES.BALANCED, () => 0.5, { matchType: 'MINI_TOURNAMENT', tournament: { effectiveStackBB: 100, blindLevel: 5, handsAtLevel: 8, playersRemaining: 2 } });
+    expect(staged.kind).toBe('fold');
+  });
+
+  it('calls a short non-reopening all-in instead of raising it', () => {
+    const shortAllIn = [...facingOpen, { playerId: 'short', street: 'PRE_FLOP' as const, action: 'all-in' as const, amount: 10, totalTo: 40, isFullRaise: false }];
+    const table = context([[14, 'spades'], [14, 'hearts']], 'LATE', 'BTN', shortAllIn, { currentBet: 40, toCall: 40, lastFullRaise: 20, legalActions: [{ kind: 'fold' }, { kind: 'call', amount: 40 }, { kind: 'all-in', amount: 1000 }] });
+    expect(chooseAction(table, 5, PERSONALITIES.BALANCED, () => 0)).toEqual({ kind: 'call' });
+  });
+
+  it('keeps personality adjustments bounded', () => {
+    const extreme = getPersonality({ id: 'TIGHT', label: 'x', looseness: 9, aggression: -9, callBias: 9, bluffFrequency: -9 });
+    expect(extreme.looseness).toBeLessThanOrEqual(0.12);
+    expect(extreme.aggression).toBeGreaterThanOrEqual(-0.12);
+    expect(extreme.callBias).toBeLessThanOrEqual(0.12);
+    expect(extreme.bluffFrequency).toBeGreaterThanOrEqual(-0.1);
   });
 });

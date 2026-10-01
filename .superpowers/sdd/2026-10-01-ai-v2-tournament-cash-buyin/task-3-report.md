@@ -142,3 +142,27 @@ passes the difficulty profile's fixed simulation budget into post-flop
 analysis, and applies a small explicit MINI_TOURNAMENT pressure adjustment when
 no tournament context object is supplied. Targeted AI tests (16 files, 87
 tests) and typecheck pass after this cleanup.
+
+## Scoped re-review fixes
+
+- Tournament decisions now consume `effectiveStackBB`/`stackBB`, blind level,
+  remaining players, and hands at the current level. The state turn adapter
+  resolves session-only match metadata and passes the minimum live stack across
+  the acting player and opponents, while explicit tournament effective stack
+  remains authoritative.
+- Experience event classification now requires a full-raise all-in (using
+  explicit metadata or target contribution versus `lastFullRaise`). Short
+  non-reopening all-ins are excluded from PFR, 3-Bet and 4-Bet numerators.
+  Check-Raise denominator counts the response opportunity after AI check and
+  opponent bet even when the response is call/fold. `recordExperienceHand`
+  provides the hand-end showdown denominator; `recordExperienceShowdown` only
+  records an event numerator.
+- CO/BTN/BB cases now assert distinct expected behavior rather than only legal
+  action membership. Added short-all-in reopen and bounded personality tests.
+
+Verification after this scope:
+
+- `npm run typecheck` — passed.
+- Targeted matrix/metrics tests — 25 passed.
+- Full suite and representative tournament-context probes are run before the
+  follow-up commit.

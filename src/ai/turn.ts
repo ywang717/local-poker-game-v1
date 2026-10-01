@@ -32,11 +32,14 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   // invalid future level cannot silently reach the decision engine.
   getDifficultyProfile(difficulty);
   const context = toPublicContext(state, actor.id, opponentModels);
+  const liveStacks = state.players.filter((player) => !player.folded && player.id !== actor.id).map((player) => player.stack);
+  const effectiveStackBB = Math.min(actor.stack, ...liveStacks.filter((stack) => Number.isFinite(stack))) / Math.max(1, state.bigBlind);
+  const playersRemaining = state.players.filter((player) => !player.folded).length;
   return {
     playerId: actor.id,
     action: chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng, {
       matchType,
-      tournament: matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB: actor.stack / Math.max(1, state.bigBlind), stackBB: actor.stack / Math.max(1, state.bigBlind), blindLevel: state.tableLevel ?? state.session?.tableLevel ?? difficulty } : undefined,
+      tournament: matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB, stackBB: actor.stack / Math.max(1, state.bigBlind), blindLevel: state.tableLevel ?? state.session?.tableLevel ?? difficulty, playersRemaining, handsAtLevel: state.handNumber } : undefined,
     }),
   };
 }
