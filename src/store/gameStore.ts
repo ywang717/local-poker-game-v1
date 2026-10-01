@@ -22,11 +22,13 @@ export type GameStore = {
   game: GameState | null;
   paused: boolean;
   leaveRequested: boolean;
+  zeroStackChoice: boolean;
   setGame: (game: GameState | null) => void;
   dispatchAction: (playerId: string, action: PlayerAction) => boolean;
   togglePause: () => void;
   requestLeave: () => 'IMMEDIATE' | 'AFTER_HAND';
   completeHand: () => void;
+  chooseZeroStack: (choice: 'REBUY' | 'LEAVE') => void;
   legalActions: (playerId: string) => ReturnType<typeof getLegalActions>;
 };
 
@@ -34,8 +36,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   game: null,
   paused: false,
   leaveRequested: false,
+  zeroStackChoice: false,
   setGame: (game) => {
-    set((current) => ({ game, paused: false, leaveRequested: game ? current.leaveRequested : false }));
+    set((current) => ({ game, paused: false, leaveRequested: game ? current.leaveRequested : false, zeroStackChoice: Boolean(game?.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack === 0) }));
     persistGame(game);
   },
   dispatchAction: (playerId, action) => {
@@ -51,7 +54,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   requestLeave: () => {
     const game = get().game;
     if (!game || game.street === 'SHOWDOWN' || game.street === 'SETTLEMENT') {
-      set({ game: null, paused: false, leaveRequested: false });
+      set({ game: null, paused: false, leaveRequested: false, zeroStackChoice: false });
       persistGame(null);
       return 'IMMEDIATE';
     }
@@ -60,9 +63,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   completeHand: () => {
     if (get().leaveRequested) {
-      set({ game: null, leaveRequested: false });
+      set({ game: null, leaveRequested: false, zeroStackChoice: false });
       persistGame(null);
     }
+  },
+  chooseZeroStack: (choice) => {
+    if (choice === 'LEAVE') set({ zeroStackChoice: false, leaveRequested: true });
+    else set({ zeroStackChoice: true });
   },
   legalActions: (playerId) => {
     const game = get().game;

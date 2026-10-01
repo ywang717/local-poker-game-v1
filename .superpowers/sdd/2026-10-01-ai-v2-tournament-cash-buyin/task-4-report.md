@@ -15,3 +15,11 @@ Verification:
 - Existing transaction, career and session metadata tests — 9 tests passed.
 
 Known integration boundary: the dedicated buy-in UI/zero-stack choice screen is owned by the follow-up UI task; the service and next-hand path support a zero-stack rebuy when the user confirms one.
+
+## Review fixes (2026-10-01)
+
+- Added `zeroStackChoice` and `chooseZeroStack` to the game store. A zero-stack settlement no longer exits or invokes bankruptcy when continue is selected; only explicit leave cashes out. Pending rebuy enables the continue action while the choice remains available to the next UI task.
+- Expanded validation and street/all-in pending tests, shortage/over-cap/duplicate/zero-stack cases, and IndexedDB recovery for pending, applied, refunded, and repeated operations.
+- Kept current hand immutable and synchronized `activeTableStack` at settlement and after next-hand rebuy application.
+
+Verification: `npm run test:cash-buyin` (12 passed), `npm run typecheck`, and full `npm test` (227 passed).
