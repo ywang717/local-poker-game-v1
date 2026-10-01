@@ -23,3 +23,11 @@ Known integration boundary: the dedicated buy-in UI/zero-stack choice screen is 
 - Kept current hand immutable and synchronized `activeTableStack` at settlement and after next-hand rebuy application.
 
 Verification: `npm run test:cash-buyin` (12 passed), `npm run typecheck`, and full `npm test` (227 passed).
+
+## Test-boundary fixes (2026-10-01)
+
+- Replaced label-only street cases with real GameState fixtures across Preflop, Flop, Turn, River and All-in/settlement. Each test snapshots the current hand and verifies pot/contribution/stack immutability, then applies chips only to a constructed next hand.
+- Added career-store leave-boundary coverage proving reservation refund and duplicate cancellation idempotency.
+- Added game-store zero-stack choice coverage for confirmed rebuy continuation and explicit leave.
+
+Verification: `npm run test:cash-buyin` (14 passed), `npm run typecheck`, and full `npm test` (229 passed).

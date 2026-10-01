@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { createCareer } from '../../src/career/careerService';
 import { applyPendingCashBuyIn, cancelPendingCashBuyIn, getCashBuyInOptions, requestCashBuyIn } from '../../src/career/cashBuyInService';
 import { cashSession } from '../../src/match/session';
+import { createTable, startHand } from '../../src/game/gameEngine';
+import { createDeck, shuffleDeck } from '../../src/game/cards';
+import { useCareerStore } from '../../src/store/careerStore';
+import { useGameStore } from '../../src/store/gameStore';
 
 describe('cash table buy-ins', () => {
   it('offers standard targets and reserves only the required amount', () => {
@@ -49,16 +53,50 @@ describe('cash table buy-ins', () => {
     for (const [, action] of invalid) expect(action).toThrow();
   });
 
-  it.each(['PRE_FLOP', 'FLOP', 'TURN', 'RIVER', 'ALL_IN'])('keeps a pending request independent of %s hand state', (street) => {
-    const career = { ...createCareer('P'), activeTableStack: 1_000 };
-    const result = requestCashBuyIn(career, cashSession('STANDARD', 1, `s-${street}`), 2_000);
-    expect(result.career.activeTableStack).toBe(1_000);
-    expect(result.pending.status).toBe('PENDING');
+  it.each(['PRE_FLOP', 'FLOP', 'TURN', 'RIVER', 'ALL_IN'] as const)('keeps the current %s hand immutable and applies only to the next hand', (street) => {
+    const career = { ...createCareer('P'), activeTableStack: 900 };
+    const session = cashSession('STANDARD', 1, `s-${street}`);
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, session, players: [{ id: 'human', seat: 0, stack: 1_000, isHuman: true }, { id: 'ai', seat: 1, stack: 1_000 }] });
+    const hand = startHand(table, shuffleDeck(createDeck('STANDARD')));
+    const current = { ...hand, street: street === 'ALL_IN' ? 'SETTLEMENT' as const : street, pots: [{ amount: 75, eligiblePlayerIds: ['human'], winnerPlayerIds: [], awards: [] }], players: hand.players.map((p) => p.isHuman ? { ...p, stack: 900, handContribution: 100 } : p) };
+    const before = structuredClone(current);
+    const result = requestCashBuyIn(career, session, 2_000);
+    expect(current).toEqual(before);
+    const applied = applyPendingCashBuyIn(result.career, result.pending, 900);
+    expect(applied.appliedAmount).toBe(1_100);
+    const next = { ...current, players: current.players.map((p) => p.isHuman ? { ...p, stack: p.stack + applied.appliedAmount } : p) };
+    expect(next.players.find((p) => p.isHuman)?.stack).toBe(2_000);
+    expect(current.pots[0].amount).toBe(75);
   });
 
   it('supports a zero-stack rebuy and preserves the choice until explicit leave', () => {
     const career = { ...createCareer('P'), activeTableStack: 0 };
     const result = requestCashBuyIn(career, cashSession('STANDARD', 1, 'zero'), 5_000);
     expect(result.pending.requestedAmount).toBe(5_000);
+  });
+
+  it('refunds a reserved buy-in exactly once through the career store leave boundary', () => {
+    const career = { ...createCareer('P'), activeTableStack: 1_000 };
+    useCareerStore.getState().setCareer(career);
+    const requested = useCareerStore.getState().requestCashBuyIn(cashSession('STANDARD', 1, 'leave-store'), 2_000);
+    const reservedFunds = useCareerStore.getState().career!.currentFunds;
+    useCareerStore.getState().cancelPendingCashBuyIn(requested.pending.transactionId);
+    expect(useCareerStore.getState().career!.currentFunds).toBe(career.currentFunds);
+    useCareerStore.getState().cancelPendingCashBuyIn(requested.pending.transactionId);
+    expect(useCareerStore.getState().career!.currentFunds).toBe(career.currentFunds);
+    expect(reservedFunds).toBeLessThan(career.currentFunds);
+    useCareerStore.getState().setCareer(null);
+  });
+
+  it('exposes zero-stack rebuy and explicit leave choices without cashing out implicitly', () => {
+    const table = createTable({ mode: 'STANDARD', tableSize: 2, smallBlind: 25, bigBlind: 50, players: [{ id: 'human', seat: 0, stack: 0, isHuman: true }, { id: 'ai', seat: 1, stack: 1_000 }] });
+    const settled = { ...table, street: 'SETTLEMENT' as const };
+    useGameStore.getState().setGame(settled);
+    expect(useGameStore.getState().zeroStackChoice).toBe(true);
+    useGameStore.getState().chooseZeroStack('REBUY');
+    expect(useGameStore.getState().game).toBe(settled);
+    useGameStore.getState().chooseZeroStack('LEAVE');
+    expect(useGameStore.getState().leaveRequested).toBe(true);
+    useGameStore.getState().setGame(null);
   });
 });
