@@ -71,6 +71,7 @@ export function startTournamentHand(state: TournamentState, rng: RandomSource = 
   table.tournamentBlindLevel = state.blindLevel;
   table.tournamentHandsAtLevel = state.handsAtLevel;
   table.tournamentPlayersRemaining = state.players.length;
+  table.tournamentState = structuredClone(state);
   return startHand(table, shuffleDeck(createDeck(state.mode), rng));
 }
 

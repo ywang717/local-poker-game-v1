@@ -24,4 +24,6 @@ export type CareerState = {
   financialTransactions: FinancialTransaction[];
   pendingCashBuyIns: PendingCashBuyIn[];
   tournamentStatistics: TournamentStatistics;
+  /** Tournament IDs whose final result has already been recorded. */
+  recordedTournamentIds: string[];
 };

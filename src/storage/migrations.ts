@@ -20,6 +20,7 @@ function normalizeCareer(input: Record<string, any>): CareerState {
   career.tournamentStatistics = isObject(input.tournamentStatistics) ? { ...createEmptyTournamentStatistics(), ...structuredClone(input.tournamentStatistics) } : createEmptyTournamentStatistics();
   career.handHistory = Array.isArray(input.handHistory) ? structuredClone(input.handHistory).map((entry: any) => ({ ...entry, potResults: entry.potResults ?? [] })) : [];
   career.recordedHandIds = Array.isArray(input.recordedHandIds) ? [...input.recordedHandIds] : [];
+  career.recordedTournamentIds = Array.isArray(input.recordedTournamentIds) ? [...input.recordedTournamentIds] : [];
   return career;
 }
 export function migrateSave(data: unknown): VersionedSave {

@@ -42,6 +42,8 @@ export type TournamentState = {
   spectator: boolean;
   /** The current button marker; retained in pure state so hand starts rotate deterministically. */
   dealerSeat: number;
+  /** Ledger identity for the one-time entry charge. */
+  entryTransactionId?: string;
 };
 
 export type StartTournamentInput = {

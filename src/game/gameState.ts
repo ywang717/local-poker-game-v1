@@ -3,6 +3,7 @@ import type { GameMode } from './rules';
 import type { PotRefund } from './pot';
 import type { MatchSession, MatchType } from '../match/matchTypes';
 import type { TableLevelId } from '../career/tableLevels';
+import type { TournamentState } from '../tournament/types';
 
 export const SUPPORTED_TABLE_SIZES = [2, 3, 4, 5, 6, 8, 9] as const;
 export type TableSize = (typeof SUPPORTED_TABLE_SIZES)[number];
@@ -86,6 +87,8 @@ export type GameState = {
   tournamentBlindLevel?: number;
   tournamentHandsAtLevel?: number;
   tournamentPlayersRemaining?: number;
+  /** Full tournament session metadata, persisted with the current hand. */
+  tournamentState?: TournamentState;
   session?: MatchSession;
   handId: string | null;
   handNumber: number;

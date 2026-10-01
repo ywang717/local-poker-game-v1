@@ -18,6 +18,8 @@ import { HomePage } from './pages/Home/HomePage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
 import { StatisticsPage } from './pages/Statistics/StatisticsPage';
 import { TableSelectPage } from './pages/TableSelect/TableSelectPage';
+import { TournamentSelectPage } from './pages/TournamentSelect/TournamentSelectPage';
+import { TournamentResultPage } from './pages/TournamentResult/TournamentResultPage';
 import { useCareerStore } from './store/careerStore';
 import { useGameStore } from './store/gameStore';
 import { useSettingsStore } from './store/settingsStore';
@@ -26,8 +28,11 @@ import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
 import { applyPendingCashBuyIn, cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
 import { leaveTable } from './career/careerService';
+import { startTournamentHand, settleTournamentHand } from './tournament/tournamentEngine';
+import { finishTournament } from './tournament/tournamentSettlement';
+import type { TournamentState } from './tournament/types';
 
-export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
+export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'TOURNAMENT_SELECT' | 'TOURNAMENT_RESULT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
 
 export function getStartupDestination(career: CareerState | null, snapshot: HandSnapshot | null): AppView {
   if (snapshot?.state?.handId) return 'GAME';
@@ -127,6 +132,8 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const recordHand = useCareerStore((state) => state.recordHand);
   const leaveTable = useCareerStore((state) => state.leaveTable);
   const applyBankruptcy = useCareerStore((state) => state.applyBankruptcy);
+  const enterTournament = useCareerStore((state) => state.enterTournament);
+  const recordTournamentFinish = useCareerStore((state) => state.recordTournamentFinish);
   const storeGame = useGameStore((state) => state.game);
   const setGame = useGameStore((state) => state.setGame);
   const dispatchAction = useGameStore((state) => state.dispatchAction);
@@ -141,6 +148,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const [view, setView] = useState<AppView>(initialView ?? (game ? 'GAME' : career ? 'CAREER' : 'HOME'));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cashBuyInError, setCashBuyInError] = useState<string | null>(null);
+  const [tournamentResult, setTournamentResult] = useState<TournamentState | null>(initialGame?.tournamentState ?? null);
   const recordedSettlement = useRef<string | null>(null);
   const hydratedInitialGame = useRef(false);
 
@@ -179,13 +187,17 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     if (tableState.street !== 'SETTLEMENT' || !tableState.handId || recordedSettlement.current === tableState.handId) return;
     recordedSettlement.current = tableState.handId;
     const summary = handSummary(tableState);
-    if (summary && useCareerStore.getState().career) recordHand(summary);
+    if (summary && tableState.matchType !== 'MINI_TOURNAMENT' && useCareerStore.getState().career) recordHand(summary);
   };
 
   const finishTableExit = (tableState: GameState) => {
     recordSettledHand(tableState);
     const currentCareer = useCareerStore.getState().career;
-    const human = tableState.players.find((player) => player.isHuman);
+    if (tableState.matchType === 'MINI_TOURNAMENT') {
+      setGame(null);
+      setView('CAREER');
+      return;
+    }
     if (currentCareer && currentCareer.activeTableStack !== null) {
       const exitCareer = finishTableExitTransition(currentCareer, tableState);
       setCareer(exitCareer);
@@ -219,6 +231,13 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     setGame(startHand(table, shuffleDeck(createDeck(mode))));
     setView('GAME');
   };
+  const enterMiniTournament = (mode: GameMode, level: TableLevelId) => {
+    const tournament = enterTournament(mode, level);
+    const hand = startTournamentHand(tournament);
+    setTournamentResult(null);
+    setGame({ ...hand, tournamentState: tournament });
+    setView('GAME');
+  };
   const handleLeave = () => {
     const current = useGameStore.getState().game;
     if (!current) { setView('CAREER'); return; }
@@ -237,6 +256,20 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     if (!current || current.street !== 'SETTLEMENT') return;
     const human = current.players.find((player) => player.isHuman);
     let nextCareer = useCareerStore.getState().career;
+    if (current.matchType === 'MINI_TOURNAMENT' && current.tournamentState) {
+      const advanced = settleTournamentHand(current.tournamentState, current);
+      if (advanced.players.length === 1) {
+        const finished = finishTournament(advanced).state;
+        setTournamentResult(finished);
+        if (useCareerStore.getState().career) recordTournamentFinish(finished);
+        setGame(null);
+        setView('TOURNAMENT_RESULT');
+        return;
+      }
+      const nextHand = startTournamentHand(advanced);
+      setGame({ ...nextHand, tournamentState: advanced });
+      return;
+    }
     if (nextCareer && human && current.matchType !== 'MINI_TOURNAMENT') {
       nextCareer = syncActiveTableStack(nextCareer, human.stack);
       const pending = nextCareer.pendingCashBuyIns.find((entry) => entry.sessionId === current.sessionId && entry.status === 'PENDING');
@@ -284,12 +317,14 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const navigate = (next: AppView) => setView(next);
   let content: React.ReactNode;
   if (view === 'HOME') content = <HomePage career={career} loadError={loadError} onContinue={() => setView(career ? 'CAREER' : 'HOME')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
-  else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onNavigate={(next) => setView(next)} />;
+  else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onEnterTournament={() => setView('TOURNAMENT_SELECT')} onNavigate={(next) => setView(next)} />;
   else if (view === 'TABLE_SELECT' && career) content = <TableSelectPage career={career} onEnter={enterTable} />;
+  else if (view === 'TOURNAMENT_SELECT' && career) content = <TournamentSelectPage career={career} onEnter={enterMiniTournament} onBack={() => setView('CAREER')} />;
+  else if (view === 'TOURNAMENT_RESULT' && tournamentResult) content = <TournamentResultPage tournament={tournamentResult} onDone={() => setView('CAREER')} />;
   else if (view === 'GAME' && game) {
     const activePending = Boolean(career?.pendingCashBuyIns.some((entry) => entry.status === 'PENDING' && entry.sessionId === game.sessionId));
     const currentLevel = getTableLevel(game.tableLevel ?? levelForBigBlind(game.bigBlind));
-    content = <GamePage game={game} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && (game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+    content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
   }
   else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
