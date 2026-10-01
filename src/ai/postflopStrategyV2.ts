@@ -1,4 +1,6 @@
 import type { Card } from '../game/cards';
+import { createDeck } from '../game/cards';
+import { compareEvaluations, evaluateHand } from '../game/handEvaluator';
 import type { GameMode } from '../game/rules';
 import { postflopStrength } from './postflop';
 import { calculatePotOdds, calculateSpr } from './decisionFeatures';
@@ -32,25 +34,48 @@ export function analyzePostflopV2(input: PostflopDecisionInput) {
   const spr = calculateSpr(input.effectiveStack, input.potAmount);
   const selectedTexture = input.boardTexture ?? texture(input.board);
   const budget = input.simulationBudget ?? ((input.difficulty ?? 1) >= 5 ? 64 : (input.difficulty ?? 1) >= 4 ? 32 : 0);
-  const estimatedEquity = boundedMonteCarloEquity(strength.strength, strength.drawPotential, budget);
+  const estimatedEquity = boundedPublicEquity(input, budget);
   return { ...strength, texture: selectedTexture, potOdds, spr, opponentCount: Math.max(1, input.opponentCount ?? 1), priorAggressor: input.priorAggressor ?? 'OPPONENT', simulationBudget: budget, estimatedEquity };
 }
 
-/** Deterministic bounded equity probe used only at the two highest levels. */
-export function boundedMonteCarloEquity(madeStrength: number, drawPotential: number, budget: number): number {
+/** Sample public runouts and one random opponent holding without hidden data. */
+export function boundedPublicEquity(input: PostflopDecisionInput, budget: number): number {
   const samples = Math.max(0, Math.min(64, Math.floor(budget)));
-  if (samples === 0) return Math.max(0, Math.min(1, madeStrength + drawPotential * 0.15));
-  let total = 0;
+  const fallback = Math.max(0, Math.min(1, postflopStrength(input.holeCards, input.board, input.mode).strength));
+  if (samples === 0) return fallback;
+  const known = new Set([...input.holeCards, ...input.board].map((card) => card.id));
+  const remaining = createDeck(input.mode).filter((card) => !known.has(card.id));
+  if (remaining.length < 2) return fallback;
+  let total = 0; let seed = 0x9e3779b9;
   for (let index = 0; index < samples; index += 1) {
-    const runout = ((index * 37) % (samples + 11)) / (samples + 11);
-    total += Math.max(0, Math.min(1, madeStrength + drawPotential * (0.1 + runout * 0.3)));
+    seed = Math.imul(seed ^ (index + input.board.length * 131), 1664525) + 1013904223;
+    const cards = [...remaining];
+    const take = (offset: number): Card => {
+      const slot = Math.abs((seed + offset * 1013904223) | 0) % cards.length;
+      return cards.splice(slot, 1)[0];
+    };
+    const opponent = [take(1), take(2)];
+    const runout = [...input.board];
+    while (runout.length < 5 && cards.length > 0) runout.push(take(runout.length + 3));
+    const hero = evaluateHand(input.holeCards, runout, input.mode);
+    const villain = evaluateHand(opponent, runout, input.mode);
+    const comparison = compareEvaluations(hero, villain, input.mode);
+    total += comparison > 0 ? 1 : comparison === 0 ? 0.5 : 0;
   }
   return total / samples;
 }
 
+/** Kept as a compatibility alias for callers using the initial Task 3 name. */
+export function boundedMonteCarloEquity(madeStrength: number, drawPotential: number, budget: number): number {
+  const samples = Math.max(0, Math.min(64, Math.floor(budget)));
+  if (samples === 0) return Math.max(0, Math.min(1, madeStrength + drawPotential * 0.15));
+  return Math.max(0, Math.min(1, madeStrength + drawPotential * (0.1 + Math.min(1, samples / 64) * 0.2)));
+}
+
 export function decidePostflopV2(input: PostflopDecisionInput): PostflopAction {
   const analysis = analyzePostflopV2(input);
-  const strength = analysis.strength + analysis.drawPotential * 0.35;
+  const textureAdjustment = analysis.texture === 'WET' || analysis.texture === 'CONNECTED' ? -0.08 : analysis.texture === 'DRY' ? 0.04 : 0;
+  const strength = Math.max(0, Math.min(1, (analysis.simulationBudget > 0 ? analysis.estimatedEquity : analysis.strength) + analysis.drawPotential * 0.35 + textureAdjustment));
   const can = (kind: string, fallback: boolean | undefined): boolean => input.legalActions ? input.legalActions.includes(kind) : fallback !== false;
   const canCheck = can('check', input.canCheck); const canCall = can('call', input.canCall); const canBet = can('bet-to', input.canBet); const canRaise = can('raise-to', input.canRaise); const canAllIn = can('all-in', input.canAllIn);
   if (canAllIn && analysis.spr <= 0.9 && strength >= 0.86) return 'ALL_IN';

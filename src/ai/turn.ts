@@ -26,7 +26,8 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   if (!actor || actor.isHuman || actor.folded || actor.allIn) return null;
   // V2 difficulty is an explicit table/session setting. The blind fallback is
   // retained only for old snapshots that predate session metadata.
-  const difficulty = state.tableLevel ?? state.session?.tableLevel ?? difficultyForBigBlind(state.bigBlind);
+  const matchType = state.matchType ?? state.session?.matchType ?? 'CASH';
+  const difficulty = state.tableLevel ?? state.session?.tableLevel ?? (matchType === 'MINI_TOURNAMENT' ? 3 : difficultyForBigBlind(state.bigBlind));
   // Reading the profile here makes the mapping explicit and ensures an
   // invalid future level cannot silently reach the decision engine.
   getDifficultyProfile(difficulty);
@@ -34,8 +35,8 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   return {
     playerId: actor.id,
     action: chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng, {
-      matchType: state.matchType ?? state.session?.matchType,
-      tournament: state.matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB: actor.stack / Math.max(1, state.bigBlind), stackBB: actor.stack / Math.max(1, state.bigBlind) } : undefined,
+      matchType,
+      tournament: matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB: actor.stack / Math.max(1, state.bigBlind), stackBB: actor.stack / Math.max(1, state.bigBlind), blindLevel: state.tableLevel ?? state.session?.tableLevel ?? difficulty } : undefined,
     }),
   };
 }

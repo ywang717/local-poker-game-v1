@@ -12,4 +12,14 @@ describe('V2 post-flop strategy', () => {
     });
     expect(action).toBe('CHECK');
   });
+
+  it('lets board texture change a marginal made-hand decision', () => {
+    const base = {
+      holeCards: [c(9, 'spades'), c(13, 'hearts')], board: [c(14, 'clubs'), c(9, 'diamonds'), c(4, 'hearts')], mode: 'STANDARD' as const,
+      potAmount: 40, toCall: 0, effectiveStack: 100, priorAggressor: 'OPPONENT' as const, opponentCount: 1, difficulty: 3 as const,
+      canCheck: true, canCall: false, canBet: true, canRaise: false,
+    };
+    expect(decidePostflopV2({ ...base, boardTexture: 'DRY' })).toBe('BET');
+    expect(decidePostflopV2({ ...base, boardTexture: 'WET' })).toBe('CHECK');
+  });
 });

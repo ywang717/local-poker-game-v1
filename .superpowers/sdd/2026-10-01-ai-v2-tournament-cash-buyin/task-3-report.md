@@ -99,3 +99,40 @@ range/hand evaluator intentionally rewards connected hands and flushes.
   claim. Further balancing can tune ranges while keeping the explicit gates
   and baseline artifacts intact.
 
+## Review fixes
+
+The first review identified six behavior gaps. They were corrected in the
+follow-up commit:
+
+- Free pre-flop actions now prefer `check` before `fold`; a BB 72o regression
+  test covers this path.
+- `matchType`, tournament pressure, effective stack, blind stage and remaining
+  players are consumed through `DecisionOptions`. Session-only tournament
+  metadata resolves before the legacy blind fallback; tournaments without a
+  stored level use the explicit neutral level 3 fallback.
+- Pre-flop branches now read Task 2 weighted ranges, opener position and
+  situation. LV2-LV5 therefore produce distinct range widths. A5s-style
+  bounded 3-Bet and 4-Bet bluff branches are covered by the matrix tests.
+- LV4/LV5 post-flop analysis now samples actual public runouts and a sampled
+  opponent holding from the selected deck (maximum 32/64 samples). Estimated
+  equity and board texture affect the action; no hidden opponent cards are read.
+- Experience counters now use player-hand VPIP/PFR event keys, distinguish
+  called All-ins from aggressive All-ins, count C-Bet only on the first
+  post-flop action after the AI's pre-flop aggression, and count Check-Raise
+  only after the AI check and a later opponent bet. Showdown recording is
+  explicit via `recordExperienceShowdown`; the older Task 8 harness remains
+  intentionally separate.
+- `aiV2Cases.test.ts` now covers AA/KK/QQ/JJ/AKs/AQs/A5s/87o/72o, CO/BTN/BB,
+  4-Bet, effective-stack and deep-stack gates, free BB checks, tournament
+  pressure, and legal action behavior.
+
+### Review-fix verification
+
+- `npm test -- --run tests/ai/aiV2Cases.test.ts tests/ai/postflopStrategyV2.test.ts tests/ai/experienceMetrics.test.ts` — 3 files, 25 tests passed.
+- `npm run typecheck` — passed.
+- `npm test -- --run` — 40 files, 210 tests passed.
+- Representative real-runout simulations: STANDARD LV2/LV4/LV5 and SHORT_DECK
+  LV2/LV4/LV5, 1,000 complete hands each; all six runs completed with zero
+  deadlocks, illegal actions, negative chips, unclaimed pots, refund errors,
+  or chip-conservation failures. Digests: `9b17cdba`, `8feb2320`, `0dd3f7e5`,
+  `60493447`, `be3b795d`, `5a751404`.
