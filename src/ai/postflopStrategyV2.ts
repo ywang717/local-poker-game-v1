@@ -5,6 +5,7 @@ import type { GameMode } from '../game/rules';
 import { postflopStrength } from './postflop';
 import { calculatePotOdds, calculateSpr } from './decisionFeatures';
 import type { AIDifficulty } from './difficulty';
+import { getPersonality, type AIPersonality, type PersonalityId } from './personalities';
 
 export type PostflopAction = 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'FOLD' | 'ALL_IN';
 export type BoardTexture = 'DRY' | 'WET' | 'PAIRED' | 'MONOTONE' | 'CONNECTED';
@@ -15,6 +16,8 @@ export type PostflopDecisionInput = {
   opponentCount?: number; canCheck?: boolean; canCall?: boolean; canBet?: boolean; canRaise?: boolean; canAllIn?: boolean;
   legalActions?: readonly string[];
   boardTexture?: BoardTexture; simulationBudget?: number;
+  /** Personality is a bounded decision preference, never a math/equity input. */
+  personality?: PersonalityId | AIPersonality;
 };
 export type PostflopAnalysis = ReturnType<typeof analyzePostflopV2>;
 
@@ -92,16 +95,21 @@ export function boundedPublicEquity(input: PostflopDecisionInput, budget: number
 
 export function decidePostflopV2(input: PostflopDecisionInput): PostflopAction {
   const analysis = analyzePostflopV2(input);
+  const personality = getPersonality(input.personality ?? 'BALANCED');
   const textureAdjustment = analysis.texture === 'WET' || analysis.texture === 'CONNECTED' ? -0.08 : analysis.texture === 'DRY' ? 0.04 : 0;
   const strength = Math.max(0, Math.min(1, (analysis.simulationBudget > 0 ? analysis.estimatedEquity : analysis.strength) + analysis.drawPotential * 0.35 + textureAdjustment));
   const can = (kind: string, fallback: boolean | undefined): boolean => input.legalActions ? input.legalActions.includes(kind) : fallback !== false;
   const canCheck = can('check', input.canCheck); const canCall = can('call', input.canCall); const canBet = can('bet-to', input.canBet); const canRaise = can('raise-to', input.canRaise); const canAllIn = can('all-in', input.canAllIn);
-  if (canAllIn && analysis.spr <= 0.9 && strength >= 0.86) return 'ALL_IN';
-  if (input.toCall > 0 && strength < Math.max(0.22, analysis.potOdds - 0.08)) return can('fold', true) ? 'FOLD' : (canCheck ? 'CHECK' : 'CALL');
+  const betThreshold = Math.max(0.68, 0.78 - personality.aggression * 0.08);
+  const jamThreshold = Math.max(0.82, 0.86 - personality.aggression * 0.04);
+  const foldCutoff = Math.max(0.22, analysis.potOdds - 0.08 - personality.callBias * 0.45);
+  const callStrength = strength + personality.callBias * 0.5;
+  if (canAllIn && analysis.spr <= 0.9 && strength >= jamThreshold) return 'ALL_IN';
+  if (input.toCall > 0 && strength < foldCutoff) return can('fold', true) ? 'FOLD' : (canCheck ? 'CHECK' : 'CALL');
   const headsUp = analysis.opponentCount <= 1;
-  if (strength >= 0.78 && (canRaise || canBet)) return canRaise ? 'RAISE' : 'BET';
-  if (strength >= 0.5 && (canBet || canRaise) && (headsUp || analysis.priorAggressor === 'SELF')) return canRaise ? 'RAISE' : 'BET';
-  if (input.toCall > 0 && canCall && (strength >= analysis.potOdds || analysis.drawPotential >= analysis.potOdds * 0.9)) return 'CALL';
+  if (strength >= betThreshold && (canRaise || canBet) && (input.toCall <= 0 || analysis.priorAggressor === 'SELF')) return canRaise ? 'RAISE' : 'BET';
+  if (strength >= 0.5 && (canBet || canRaise) && input.toCall <= 0 && (headsUp || analysis.priorAggressor === 'SELF')) return canRaise ? 'RAISE' : 'BET';
+  if (input.toCall > 0 && canCall && (callStrength >= analysis.potOdds || analysis.drawPotential >= analysis.potOdds * (0.9 - personality.callBias * 0.2))) return 'CALL';
   return canCheck ? 'CHECK' : canCall ? 'CALL' : 'FOLD';
 }
 

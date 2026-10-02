@@ -10,6 +10,11 @@ function queuePersistence(task: () => Promise<void>): void {
   persistenceQueue = persistenceQueue.then(task, task).catch(() => undefined);
 }
 
+/** Wait for all previously queued hand writes before an atomic boundary write. */
+export async function flushGamePersistenceQueue(): Promise<void> {
+  await persistenceQueue;
+}
+
 function persistGame(game: GameState | null): void {
   if (game) {
     queuePersistence(() => saveHandSnapshot({ saveVersion: CURRENT_SAVE_VERSION, savedAt: new Date().toISOString(), state: structuredClone(game) }));
@@ -24,6 +29,8 @@ export type GameStore = {
   leaveRequested: boolean;
   zeroStackChoice: boolean;
   setGame: (game: GameState | null) => void;
+  /** Update the in-memory state after an atomic save without enqueueing a second snapshot. */
+  setGameWithoutPersistence: (game: GameState | null) => void;
   dispatchAction: (playerId: string, action: PlayerAction) => boolean;
   togglePause: () => void;
   requestLeave: () => 'IMMEDIATE' | 'AFTER_HAND';
@@ -41,6 +48,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((current) => ({ game, paused: false, leaveRequested: game ? current.leaveRequested : false, zeroStackChoice: Boolean(game?.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack === 0) }));
     persistGame(game);
   },
+  setGameWithoutPersistence: (game) => set((current) => ({ game, paused: false, leaveRequested: game ? current.leaveRequested : false, zeroStackChoice: Boolean(game?.street === 'SETTLEMENT' && game.players.find((player) => player.isHuman)?.stack === 0) })),
   dispatchAction: (playerId, action) => {
     const game = get().game;
     if (!game || get().paused) return false;

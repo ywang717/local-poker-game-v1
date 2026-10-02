@@ -20,8 +20,8 @@ import { StatisticsPage } from './pages/Statistics/StatisticsPage';
 import { TableSelectPage } from './pages/TableSelect/TableSelectPage';
 import { TournamentSelectPage } from './pages/TournamentSelect/TournamentSelectPage';
 import { TournamentResultPage } from './pages/TournamentResult/TournamentResultPage';
-import { useCareerStore } from './store/careerStore';
-import { useGameStore } from './store/gameStore';
+import { flushCareerPersistenceQueue, useCareerStore } from './store/careerStore';
+import { flushGamePersistenceQueue, useGameStore } from './store/gameStore';
 import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
@@ -139,6 +139,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const recordTournamentFinish = useCareerStore((state) => state.recordTournamentFinish);
   const storeGame = useGameStore((state) => state.game);
   const setGame = useGameStore((state) => state.setGame);
+  const setGameWithoutPersistence = useGameStore((state) => state.setGameWithoutPersistence);
   const dispatchAction = useGameStore((state) => state.dispatchAction);
   const paused = useGameStore((state) => state.paused);
   const togglePause = useGameStore((state) => state.togglePause);
@@ -300,12 +301,21 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       cashTransitionInFlight.current = true;
       try {
         const prepared = prepareCashNextHandTransition(nextCareer, current, createNextHand);
-        // Update the UI immediately at the hand boundary, then finish the
-        // atomic IndexedDB write. This keeps the button responsive while the
-        // career and snapshot are committed together.
+        // Publish the already-prepared next hand without queuing a second
+        // snapshot so the settlement control responds immediately. The
+        // atomic write waits for the old queue; a failure restores the
+        // settled hand and leaves the pending transaction for retry.
+        setGameWithoutPersistence(prepared.game);
         setCareer(prepared.career);
-        setGame(prepared.game);
-        await persistPreparedCashNextHandTransition(prepared);
+        try {
+          await flushCareerPersistenceQueue();
+          await flushGamePersistenceQueue();
+          await persistPreparedCashNextHandTransition(prepared);
+        } catch (error) {
+          setGameWithoutPersistence(current);
+          setCareer(nextCareer);
+          throw error;
+        }
       } catch (error) {
         setCashBuyInError(error instanceof Error ? error.message : '下一手保存失败，请重试');
       } finally {

@@ -9,12 +9,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'tests/simulation/continuousSimulation.test.ts' --exclude 'tests/release/**'",
     "test:ai": "vitest run tests/ai",
     "test:ai:experience": "vitest run tests/ai/experienceSimulation.test.ts tests/ai/experienceMetrics.test.ts",
     "typecheck": "tsc -b --pretty false",
-    "test:simulation": "vitest run tests/simulation tests/release",
-    "test:cash-buyin": "vitest run tests/career/cashBuyIn.test.ts tests/career/cashBuyInConservation.test.ts tests/storage/cashBuyInRecovery.test.ts",
+    "test:simulation": "npm run test:simulation:full",
+    "test:simulation:full": "vitest run tests/simulation/continuousSimulation.test.ts",
+    "test:cash-buyin": "vitest run tests/career/cashBuyIn.test.ts tests/career/cashBuyInConservation.test.ts tests/storage/cashBuyInRecovery.test.ts tests/storage/v22CashTransition.test.ts",
     "test:tournament": "vitest run tests/tournament tests/game/dealerDynamicSeats.test.ts",
     "test:simulation:smoke": "vitest run tests/release/v21Smoke.test.ts"
   },

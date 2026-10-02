@@ -5,6 +5,7 @@ import type { PublicTableContext } from './publicContext';
 import type { DetailedPosition } from './positionStrategy';
 
 export type PreflopSituation = 'UNOPENED' | 'LIMPED' | 'FACING_OPEN' | 'FACING_3BET' | 'FACING_4BET_PLUS' | 'FACING_ALL_IN';
+export type JamType = 'OPEN_JAM' | '3BET_JAM' | '4BET_JAM' | 'POSTFLOP_JAM';
 
 export type PreflopClassification = {
   situation: PreflopSituation;
@@ -13,6 +14,11 @@ export type PreflopClassification = {
   raiseCount: number;
   callerCount: number;
   effectiveStack: number;
+  currentBet: number;
+  currentAggressorId?: string;
+  jamAggressorId?: string;
+  jamType?: JamType;
+  isSqueeze: boolean;
 };
 
 export type HandClassCategory = 'PAIR' | 'SUITED' | 'OFFSUIT';
@@ -36,7 +42,7 @@ const positions: readonly DetailedPosition[] = ['UTG', 'UTG1', 'MP', 'HJ', 'CO',
 const positionOrder: Readonly<Record<DetailedPosition, number>> = { UTG: 0, UTG1: 1, MP: 2, HJ: 3, CO: 4, BTN: 5, SB: 3, BB: 1, HEADS_UP: 5 };
 
 function rankLabel(rank: Rank): string {
-  return rank === 14 ? 'A' : rank === 13 ? 'K' : rank === 12 ? 'Q' : rank === 11 ? 'J' : String(rank);
+  return rank === 14 ? 'A' : rank === 13 ? 'K' : rank === 12 ? 'Q' : rank === 11 ? 'J' : rank === 10 ? 'T' : String(rank);
 }
 
 function classFor(high: Rank, low: Rank, category: HandClassCategory): HandClass {
@@ -70,34 +76,55 @@ export function classifyPreflopSituation(context: Pick<PublicTableContext, 'acti
   let callerCount = 0;
   let openerId: string | undefined;
   let lastAggressorId: string | undefined;
-  let facingAllIn = false;
+  let jamAggressorId: string | undefined;
+  let jamType: JamType | undefined;
 
   for (const action of context.actionHistory.filter((entry) => entry.street === 'PRE_FLOP')) {
     if (action.isBlind) continue;
     if (action.action === 'call') callerCount += 1;
     const target = action.totalTo > 0 ? action.totalTo : currentBet + action.amount;
     const full = isFullRaise(action, currentBet, lastFullRaise);
-    if (action.action === 'all-in' && action.playerId !== context.aiPlayerId) facingAllIn = true;
+    // An all-in is only the current price if no later full raise replaced it.
+    // Keep its id separately from the last full aggressor so a short all-in
+    // does not accidentally reopen raising rights or rewrite the open count.
+    if (action.action === 'all-in' && action.playerId !== context.aiPlayerId) {
+      jamAggressorId = action.playerId;
+      jamType = raiseCount === 0 ? 'OPEN_JAM' : raiseCount === 1 ? '3BET_JAM' : '4BET_JAM';
+    }
     if (full) {
       raiseCount += 1;
       if (!openerId) openerId = action.playerId;
       lastAggressorId = action.playerId;
       lastFullRaise = Math.max(1, target - currentBet);
+      // A later full raise replaces any earlier all-in as the current price.
+      jamAggressorId = undefined;
+      jamType = undefined;
+      if (action.action === 'all-in' && action.playerId !== context.aiPlayerId) {
+        jamAggressorId = action.playerId;
+        jamType = raiseCount === 1 ? 'OPEN_JAM' : raiseCount === 2 ? '3BET_JAM' : '4BET_JAM';
+      }
     }
     currentBet = Math.max(currentBet, target);
   }
 
-  const liveStacks = context.players
-    .filter((player) => !player.folded && player.id !== context.aiPlayerId)
-    .map((player) => player.stack + player.handContribution);
   const ownStack = context.self.stack + context.self.handContribution;
-  const effectiveStack = Math.min(ownStack, ...liveStacks.filter((stack) => Number.isFinite(stack)));
+  const currentAggressorId = jamAggressorId ?? lastAggressorId;
+  const relevantAggressor = currentAggressorId ? context.players.find((player) => player.id === currentAggressorId) : undefined;
+  const fallbackStacks = context.players.filter((player) => !player.folded && player.id !== context.aiPlayerId).map((player) => player.stack).filter(Number.isFinite);
+  const effectiveStack = relevantAggressor
+    ? Math.min(context.self.stack, relevantAggressor.stack)
+    : Math.min(context.self.stack, ...fallbackStacks);
+  const facingAllIn = Boolean(jamAggressorId);
   const situation = facingAllIn
     ? 'FACING_ALL_IN'
     : raiseCount === 0 ? (callerCount > 0 ? 'LIMPED' : 'UNOPENED')
       : raiseCount === 1 ? 'FACING_OPEN'
         : raiseCount === 2 ? 'FACING_3BET' : 'FACING_4BET_PLUS';
-  return { situation, openerId, lastAggressorId, raiseCount, callerCount, effectiveStack: Number.isFinite(effectiveStack) ? effectiveStack : ownStack };
+  return {
+    situation, openerId, lastAggressorId, currentAggressorId, jamAggressorId, jamType,
+    raiseCount, callerCount, currentBet, isSqueeze: raiseCount === 1 && callerCount > 0,
+    effectiveStack: Number.isFinite(effectiveStack) ? effectiveStack : ownStack,
+  };
 }
 
 function classesFor(mode: GameMode): HandClass[] {

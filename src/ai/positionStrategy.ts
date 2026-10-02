@@ -2,6 +2,13 @@ import type { GameState } from '../game/gameState';
 
 /** The fixed seat labels used by the V2 pre-flop ranges. */
 export type DetailedPosition = 'UTG' | 'UTG1' | 'MP' | 'HJ' | 'CO' | 'BTN' | 'SB' | 'BB' | 'HEADS_UP';
+export type PositionRoles = {
+  isButton: boolean;
+  isSmallBlind: boolean;
+  isBigBlind: boolean;
+  /** Post-flop role. In heads-up the BTN/SB is in position and BB is OOP. */
+  inPosition: boolean;
+};
 
 const byCount: Readonly<Record<number, readonly DetailedPosition[]>> = {
   0: [],
@@ -51,6 +58,33 @@ export function positionForDetailed(state: GameState, playerId: string): Detaile
   const labels = byCount[preBlindSeats.length] ?? preBlindSeats.map((_, index) => index === 0 ? 'UTG' : index === preBlindSeats.length - 1 ? 'CO' : 'MP');
   const positionIndex = preBlindSeats.indexOf(player.seat);
   return labels[positionIndex] ?? 'MP';
+}
+
+/**
+ * Derive role flags from the same fixed seat ring as positionForDetailed.
+ * Heads-up keeps the detailed label for compatibility, while callers still
+ * receive the distinct BTN/SB and BB roles required for sizing and ranges.
+ */
+export function positionRolesFor(state: GameState, playerId: string): PositionRoles {
+  const player = state.players.find((entry) => entry.id === playerId);
+  if (!player) throw new Error(`Unknown player ${playerId}`);
+  const seats = occupiedSeats(state);
+  const ring = clockwiseFromDealer(state, seats);
+  const isButton = player.seat === state.dealerSeat || (ring.length > 0 && ring[0] === player.seat);
+  const isSmallBlind = ring.length <= 2
+    ? isButton
+    : player.seat === (state.smallBlindSeat ?? ring[1]);
+  const isBigBlind = ring.length <= 2
+    ? !isButton
+    : player.seat === (state.bigBlindSeat ?? ring[2]);
+  const detailed = positionForDetailed(state, playerId);
+  const inPosition = ring.length <= 2 ? isButton : detailed === 'BTN' || detailed === 'CO';
+  return { isButton, isSmallBlind, isBigBlind, inPosition };
+}
+
+/** Combined source-of-truth record for consumers that need both the label and roles. */
+export function positionInfoFor(state: GameState, playerId: string): { detailedPosition: DetailedPosition } & PositionRoles {
+  return { detailedPosition: positionForDetailed(state, playerId), ...positionRolesFor(state, playerId) };
 }
 
 /** Return the detailed position for every currently represented player. */

@@ -15,6 +15,11 @@ function queueCareerSave(career: CareerState): void {
   careerPersistenceQueue = careerPersistenceQueue.then(() => saveCareer(career), () => saveCareer(career)).catch(() => undefined);
 }
 
+/** Flush career writes before a cross-store atomic cash transition. */
+export async function flushCareerPersistenceQueue(): Promise<void> {
+  await careerPersistenceQueue;
+}
+
 export type CareerStore = {
   career: CareerState | null;
   setCareer: (career: CareerState | null) => void;

@@ -37,7 +37,7 @@ jobs:
         run: npm run test:cash-buyin
       - name: Tournament release gate
         run: npm run test:tournament
-      - name: V2.1 smoke simulations
+      - name: V2.2 release smoke simulations
         run: npm run test:simulation:smoke
       - name: Build
         run: npm run build

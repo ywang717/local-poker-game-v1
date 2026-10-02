@@ -3,11 +3,15 @@ import { getLegalActions } from '../game/betting';
 import type { ActionRecord, GameState, LegalAction, PlayerState } from '../game/gameState';
 import type { Position } from './preflopRanges';
 import type { PlayerModel } from './playerModel';
-import { positionForDetailed, type DetailedPosition } from './positionStrategy';
+import { positionForDetailed, positionRolesFor, type DetailedPosition } from './positionStrategy';
 
 export type PublicPlayerView = Omit<PlayerState, 'holeCards'> & {
   /** Canonical fixed-seat label, included so consumers never remap seats. */
   detailedPosition?: DetailedPosition;
+  isButton?: boolean;
+  isSmallBlind?: boolean;
+  isBigBlind?: boolean;
+  inPosition?: boolean;
 };
 export type PublicSelfView = PublicPlayerView & { holeCards: Card[] };
 export type PublicSidePot = { amount: number; eligiblePlayerIds: string[] };
@@ -66,7 +70,7 @@ export function positionFor(state: GameState, player: PlayerState): Position {
 
 function publicPlayer(player: PlayerState, state: GameState): PublicPlayerView {
   const { holeCards: _hidden, ...view } = player;
-  return { ...view, detailedPosition: positionForDetailed(state, player.id) };
+  return { ...view, detailedPosition: positionForDetailed(state, player.id), ...positionRolesFor(state, player.id) };
 }
 
 export function toPublicContext(

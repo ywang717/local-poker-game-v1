@@ -5,6 +5,7 @@ import { PERSONALITIES } from './personalities';
 import { toPublicContext } from './publicContext';
 import type { PlayerModel } from './playerModel';
 import { applyShortStackStrategy, buildTournamentDecisionOptions } from './tournamentStrategy';
+import { classifyPreflopSituation } from './preflopStrategy';
 
 /** Map the table's configured big blind to the five career AI levels. */
 export function difficultyForBigBlind(bigBlind: number): AIDifficulty {
@@ -34,7 +35,8 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   getDifficultyProfile(difficulty);
   const context = toPublicContext(state, actor.id, opponentModels);
   const liveStacks = state.players.filter((player) => !player.folded && player.id !== actor.id).map((player) => player.stack);
-  const effectiveStackBB = Math.min(actor.stack, ...liveStacks.filter((stack) => Number.isFinite(stack))) / Math.max(1, state.bigBlind);
+  const classification = state.street === 'PRE_FLOP' ? classifyPreflopSituation(context) : undefined;
+  const effectiveStackBB = (classification?.effectiveStack ?? Math.min(actor.stack, ...liveStacks.filter((stack) => Number.isFinite(stack)))) / Math.max(1, state.bigBlind);
   // Tournament remaining players is the number of entrants still alive
   // between hands. Folded seats are still in the tournament and must not
   // change this value during the current hand.
