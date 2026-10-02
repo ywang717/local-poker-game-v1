@@ -6,6 +6,7 @@ import type { GameState } from '../game/gameState';
 import { getTableLevel, type TableLevelId } from '../career/tableLevels';
 import type { MatchType } from '../match/matchTypes';
 import { personalityForAiIndex } from '../ai/personalities';
+import { selectAiNamesForKey } from '../ai/names';
 
 function isObject(value: unknown): value is Record<string, any> { return typeof value === 'object' && value !== null; }
 function levelForBigBlind(bigBlind: unknown): TableLevelId {
@@ -76,12 +77,31 @@ export function migrateHandSnapshot(data: unknown): HandSnapshot {
       rewardPaid: state.tournamentState.rewardPaid === true,
       spectator: state.tournamentState.spectator === true,
     };
+    const tournamentId = typeof state.tournamentState.tournamentId === 'string' ? state.tournamentState.tournamentId : 'legacy-tournament';
+    const tournamentNames = selectAiNamesForKey(5, tournamentId);
+    const tournamentNameById = new Map(tournamentNames.map((name, index) => [`ai-${index + 1}`, name]));
     let tournamentAiIndex = 0;
     if (Array.isArray(state.tournamentState.players)) {
       for (const player of state.tournamentState.players) {
         if (!player.isHuman) {
           player.personalityId = player.personalityId ?? personalityForAiIndex(tournamentAiIndex);
+          if (typeof player.name !== 'string' || /^AI\s*\d+$/i.test(player.name)) {
+            player.name = tournamentNameById.get(player.id) ?? tournamentNames[tournamentAiIndex] ?? player.name;
+          }
           tournamentAiIndex += 1;
+        }
+      }
+    }
+    if (Array.isArray(state.tournamentState.eliminations)) {
+      state.tournamentState.eliminations = state.tournamentState.eliminations.map((entry: any) => ({
+        ...entry,
+        playerName: entry.playerName ?? tournamentNameById.get(entry.playerId),
+      }));
+    }
+    if (Array.isArray(state.players)) {
+      for (const player of state.players) {
+        if (!player.isHuman && (typeof player.name !== 'string' || /^AI\s*\d+$/i.test(player.name))) {
+          player.name = tournamentNameById.get(player.id) ?? player.name;
         }
       }
     }

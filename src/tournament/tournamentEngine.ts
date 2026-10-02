@@ -7,6 +7,7 @@ import { getTableLevel } from '../career/tableLevels';
 import { getBlindStructure } from './blindStructure';
 import type { StartTournamentInput, TournamentPlayer, TournamentState } from './types';
 import { personalityForAiIndex } from '../ai/personalities';
+import { selectAiNamesForKey } from '../ai/names';
 
 let tournamentSequence = 0;
 
@@ -29,13 +30,15 @@ export function startTournament(input: StartTournamentInput = {}): TournamentSta
   const startingStack = bigBlind * 100;
   const humanId = input.humanId ?? input.humanPlayerId ?? input.playerId ?? input.human?.id ?? 'human';
   if (!humanId) throw new Error('humanId is required');
+  const tournamentId = input.tournamentId ?? generatedTournamentId();
   const aiIds = Array.from({ length: 5 }, (_, index) => `ai-${index + 1}`);
   if (aiIds.includes(humanId)) throw new Error(`Human participant id collides with reserved AI id: ${humanId}`);
+  const aiNames = selectAiNamesForKey(5, tournamentId);
   const players: TournamentPlayer[] = [
     { id: humanId, name: input.humanName ?? input.human?.name ?? humanId, seat: 0, isHuman: true, stack: startingStack, startingStack },
     ...Array.from({ length: 5 }, (_, index) => ({
       id: `ai-${index + 1}`,
-      name: `AI ${index + 1}`,
+      name: aiNames[index],
       seat: index + 1,
       isHuman: false,
       stack: startingStack,
@@ -47,7 +50,7 @@ export function startTournament(input: StartTournamentInput = {}): TournamentSta
   assertInteger(entryFee, 'entryFee');
   if (entryFee <= 0) throw new Error('entryFee must be positive');
   return {
-    tournamentId: input.tournamentId ?? generatedTournamentId(), mode, tableLevel, entryFee,
+    tournamentId, mode, tableLevel, entryFee,
     startingStack, smallBlind, bigBlind, blindLevel: 1, handsAtLevel: 0, handNumber: 0,
     players, eliminations: [], rankings: [], rewardPaid: false, spectator: false, dealerSeat: 0,
   };
@@ -103,7 +106,7 @@ export function settleTournamentHand(state: TournamentState, settledGame: GameSt
   const totalEntrants = state.players.length + state.eliminations.length;
   zeroStack.forEach((player) => {
     const rank = totalEntrants - eliminations.length;
-    eliminations.push({ playerId: player.id, rank, handNumber, stackBeforeHand: stackBefore.get(player.id) ?? 0, seat: player.seat });
+    eliminations.push({ playerId: player.id, playerName: player.name, rank, handNumber, stackBeforeHand: stackBefore.get(player.id) ?? 0, seat: player.seat });
     rankings.push({ playerId: player.id, rank });
   });
   const { smallBlind, bigBlind } = getBlindStructure(state.tableLevel, state.blindLevel);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDeck } from '../../src/game/cards';
+import { AI_NAME_POOL } from '../../src/ai/names';
 import { startTournament, startTournamentHand, settleTournamentHand, advanceBlindLevel } from '../../src/tournament/tournamentEngine';
 
 describe('mini tournament engine', () => {
@@ -22,6 +23,16 @@ describe('mini tournament engine', () => {
     expect(new Set(state.players.map((player) => player.stack))).toEqual(new Set([10_000]));
     expect(state.startingStack).toBe(10_000);
     expect('rebuy' in state).toBe(false);
+  });
+
+  it('assigns named AI participants instead of generic tournament labels', () => {
+    const state = startTournament({ tournamentId: 'named-tournament', humanId: 'hero' });
+    const aiPlayers = state.players.filter((player) => !player.isHuman);
+
+    expect(aiPlayers).toHaveLength(5);
+    expect(aiPlayers.map((player) => player.name)).not.toEqual(['AI 1', 'AI 2', 'AI 3', 'AI 4', 'AI 5']);
+    expect(new Set(aiPlayers.map((player) => player.name)).size).toBe(5);
+    expect(aiPlayers.every((player) => AI_NAME_POOL.includes(player.name as (typeof AI_NAME_POOL)[number]))).toBe(true);
   });
 
   it('upgrades blinds after eight completed hands', () => {

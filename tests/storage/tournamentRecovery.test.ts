@@ -14,6 +14,29 @@ describe('tournament snapshot recovery', () => {
     expect(migrated.state.tournamentState).toMatchObject({ tournamentId: 'legacy-t', rewardPaid: true, blindLevel: 2 });
   });
 
+  it('backfills names for active tournament snapshots that used generic AI labels', () => {
+    const players = [
+      { id: 'hero', name: '玩家', isHuman: true },
+      ...Array.from({ length: 5 }, (_, index) => ({ id: `ai-${index + 1}`, name: `AI ${index + 1}`, isHuman: false })),
+    ];
+    const migrated = migrateHandSnapshot({
+      saveVersion: 1,
+      savedAt: '2026-01-01T00:00:00Z',
+      state: {
+        mode: 'STANDARD', bigBlind: 50, deck: [], players,
+        tournamentState: {
+          tournamentId: 'legacy-named-tournament', mode: 'STANDARD', tableLevel: 1, entryFee: 5_000,
+          startingStack: 5_000, smallBlind: 25, bigBlind: 50, blindLevel: 1, handsAtLevel: 0, handNumber: 0,
+          players: players.map((player, seat) => ({ ...player, seat, stack: 5_000, startingStack: 5_000 })),
+          eliminations: [], rankings: [], rewardPaid: false, spectator: false, dealerSeat: 0,
+        },
+      },
+    } as any);
+    const tournamentPlayers = migrated.state.tournamentState!.players;
+    expect(tournamentPlayers.filter((player) => !player.isHuman).map((player) => player.name)).not.toEqual(['AI 1', 'AI 2', 'AI 3', 'AI 4', 'AI 5']);
+    expect(migrated.state.players.filter((player) => !player.isHuman).map((player) => player.name)).toEqual(tournamentPlayers.filter((player) => !player.isHuman).map((player) => player.name));
+  });
+
   it('restores the exact hand, blinds, eliminations, and reward guard', async () => {
     await resetStorageForTests();
     const tournament = startTournament({ tournamentId: 'recovery-t1', humanId: 'human', tableLevel: 2 });

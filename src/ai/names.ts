@@ -23,3 +23,20 @@ export function selectAiNames(count: number, rng: NameRandomSource = Math.random
   }
   return shuffled.slice(0, count);
 }
+
+/**
+ * Select a stable, pseudo-random set of names for a persisted session.
+ *
+ * The key keeps names varied between sessions while making reconstruction of
+ * a legacy snapshot deterministic.  It is not used for game randomness.
+ */
+export function selectAiNamesForKey(count: number, key: string): AiName[] {
+  let seed = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    seed = Math.imul(seed ^ key.charCodeAt(index), 16777619) >>> 0;
+  }
+  return selectAiNames(count, () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 0x1_0000_0000;
+  });
+}

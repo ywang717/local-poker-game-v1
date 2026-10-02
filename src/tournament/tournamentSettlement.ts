@@ -49,7 +49,7 @@ export function forfeitTournament(input: TournamentState): TournamentState {
   const rank = state.players.length;
   state.players = state.players.filter((player) => player.id !== human.id);
   state.rankings.push({ playerId: human.id, rank });
-  state.eliminations.push({ playerId: human.id, rank, handNumber: state.handNumber, stackBeforeHand: human.stack, seat: human.seat });
+  state.eliminations.push({ playerId: human.id, playerName: human.name, rank, handNumber: state.handNumber, stackBeforeHand: human.stack, seat: human.seat });
   state.spectator = true;
   return state;
 }

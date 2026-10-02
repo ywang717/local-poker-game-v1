@@ -15,6 +15,8 @@ export type TournamentPlayer = {
 
 export type TournamentElimination = {
   playerId: string;
+  /** Preserved so the spectator and result views can show the player's name after removal. */
+  playerName?: string;
   rank: number;
   handNumber: number;
   stackBeforeHand: number;
