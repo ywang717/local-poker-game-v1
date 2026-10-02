@@ -27,7 +27,7 @@ import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
 import { cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
-import { persistPreparedCashNextHandTransition, prepareCashNextHandTransition } from './career/cashBuyInTransition';
+import { persistPreparedCashNextHandTransition, prepareCashNextHandTransition, type PreparedCashNextHandTransition } from './career/cashBuyInTransition';
 import { leaveTable } from './career/careerService';
 import { startTournamentHand, settleTournamentHand } from './tournament/tournamentEngine';
 import { finishTournament, forfeitTournament } from './tournament/tournamentSettlement';
@@ -44,6 +44,19 @@ export function getStartupDestination(career: CareerState | null, snapshot: Hand
 
 export function shouldFinishTableExitAfterSettlement(game: GameState | null, leaveRequested: boolean): boolean {
   return Boolean(game && leaveRequested && game.street === 'SETTLEMENT');
+}
+
+/** Publish a next hand only after its career/hand pair has been committed. */
+export async function commitCashNextHandAndPublish(
+  prepared: PreparedCashNextHandTransition,
+  publishCareer: (career: CareerState) => void,
+  publishGame: (game: GameState) => void,
+): Promise<void> {
+  await flushCareerPersistenceQueue();
+  await flushGamePersistenceQueue();
+  await persistPreparedCashNextHandTransition(prepared);
+  publishCareer(prepared.career);
+  publishGame(prepared.game);
 }
 
 /** Production cash-out ordering shared by the App transition and integration tests. */
@@ -301,21 +314,10 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       cashTransitionInFlight.current = true;
       try {
         const prepared = prepareCashNextHandTransition(nextCareer, current, createNextHand);
-        // Publish the already-prepared next hand without queuing a second
-        // snapshot so the settlement control responds immediately. The
-        // atomic write waits for the old queue; a failure restores the
-        // settled hand and leaves the pending transaction for retry.
-        setGameWithoutPersistence(prepared.game);
-        setCareer(prepared.career);
-        try {
-          await flushCareerPersistenceQueue();
-          await flushGamePersistenceQueue();
-          await persistPreparedCashNextHandTransition(prepared);
-        } catch (error) {
-          setGameWithoutPersistence(current);
-          setCareer(nextCareer);
-          throw error;
-        }
+        // Keep settlement visible until the previous writes drain and the
+        // career/hand pair is durable. Publishing early lets instant AI act
+        // against a next hand that has not yet been committed.
+        await commitCashNextHandAndPublish(prepared, setCareer, setGameWithoutPersistence);
       } catch (error) {
         setCashBuyInError(error instanceof Error ? error.message : '下一手保存失败，请重试');
       } finally {

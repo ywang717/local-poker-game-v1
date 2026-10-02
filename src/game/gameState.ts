@@ -81,6 +81,13 @@ export type ActionRecord = {
   /** Optional metadata used by public AI observers; old records omit it. */
   isBlind?: boolean;
   isFullRaise?: boolean;
+  /** Stack and price before this action; used to classify short/all-in actions. */
+  stackBeforeAction?: number;
+  previousBet?: number;
+  increase?: number;
+  isAllInCall?: boolean;
+  isAggressiveRaise?: boolean;
+  facingBet?: boolean;
 };
 
 export type GameState = {

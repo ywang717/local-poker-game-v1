@@ -34,9 +34,14 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   // invalid future level cannot silently reach the decision engine.
   getDifficultyProfile(difficulty);
   const context = toPublicContext(state, actor.id, opponentModels);
-  const liveStacks = state.players.filter((player) => !player.folded && player.id !== actor.id).map((player) => player.stack);
+  const liveOpponents = state.players.filter((player) => !player.folded && player.id !== actor.id);
   const classification = state.street === 'PRE_FLOP' ? classifyPreflopSituation(context) : undefined;
-  const effectiveStackBB = (classification?.effectiveStack ?? Math.min(actor.stack, ...liveStacks.filter((stack) => Number.isFinite(stack)))) / Math.max(1, state.bigBlind);
+  const lastAggression = [...state.actionHistory].reverse().find((entry) => entry.street === state.street && entry.playerId !== actor.id && (entry.isAggressiveRaise ?? (entry.action === 'bet-to' || entry.action === 'raise-to' || entry.action === 'all-in' && !entry.isAllInCall)));
+  const relevantOpponent = liveOpponents.find((player) => player.id === lastAggression?.playerId);
+  const opponentCapacity = relevantOpponent
+    ? relevantOpponent.stack + relevantOpponent.streetContribution
+    : Math.min(...liveOpponents.filter((player) => player.stack > 0).map((player) => player.stack), actor.stack);
+  const effectiveStackBB = (classification?.effectiveStack ?? Math.min(actor.stack, opponentCapacity)) / Math.max(1, state.bigBlind);
   // Tournament remaining players is the number of entrants still alive
   // between hands. Folded seats are still in the tournament and must not
   // change this value during the current hand.

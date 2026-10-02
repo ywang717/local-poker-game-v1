@@ -9,7 +9,7 @@ import { modelRates } from './playerModel';
 import { calculatePotOdds, calculateSpr } from './decisionFeatures';
 import { chooseRaiseTarget, clampRaiseTarget } from './raiseStrategy';
 import { decideJam } from './jamStrategy';
-import { decidePostflopV2 } from './postflopStrategyV2';
+import { decidePostflopV2WithIntent } from './postflopStrategyV2';
 
 export type RandomSource = () => number;
 export type PersonalityChoice = PersonalityId | AIPersonality;
@@ -18,7 +18,14 @@ export type DecisionOptions = { matchType?: MatchType; tournament?: TournamentDe
 function random(rng: RandomSource): number { const value = rng(); return Number.isFinite(value) ? Math.max(0, Math.min(0.999999, value)) : 0.5; }
 function legal(context: PublicTableContext, kind: LegalAction['kind']): LegalAction | undefined { return context.legalActions.find((action) => action.kind === kind); }
 function fallback(context: PublicTableContext): PlayerAction { if (legal(context, 'check')) return { kind: 'check' }; if (legal(context, 'call')) return { kind: 'call' }; if (legal(context, 'fold')) return { kind: 'fold' }; return { kind: 'all-in' }; }
-function averageOpponentFold(context: PublicTableContext): number { const rates = Object.values(context.opponentModels).map(modelRates).filter((entry) => entry.foldToBet > 0); return rates.length ? rates.reduce((sum, entry) => sum + entry.foldToBet, 0) / rates.length : 0.25; }
+function averageOpponentFold(context: PublicTableContext): number {
+  const rates = context.opponents
+    .filter((opponent) => !opponent.folded)
+    .map((opponent) => context.opponentModels[opponent.id])
+    .filter((model): model is NonNullable<typeof model> => Boolean(model && model.facedBetCount > 0))
+    .map(modelRates);
+  return rates.length ? rates.reduce((sum, entry) => sum + entry.foldToBet, 0) / rates.length : 0.25;
+}
 function handStrength(context: PublicTableContext): number {
   const hand = normalizeHandClass(context.self.holeCards, context.mode); const high = hand.high; const low = hand.low;
   if (hand.category === 'PAIR') return Math.min(1, 0.52 + (high - 2) * 0.035);
@@ -32,7 +39,7 @@ function handStrength(context: PublicTableContext): number {
 }
 function isAggressive(kind: PlayerAction['kind']): boolean { return kind === 'bet-to' || kind === 'raise-to' || kind === 'all-in'; }
 function rangeWeight(context: PublicTableContext, difficulty: AIDifficulty, situation: PreflopSituation): number {
-  const position = context.detailedPosition ?? (context.position === 'LATE' ? 'BTN' : context.position === 'EARLY' ? 'UTG' : 'MP');
+  const position = context.self.isButton ? 'BTN' : context.self.isBigBlind ? 'BB' : context.detailedPosition ?? (context.position === 'LATE' ? 'BTN' : context.position === 'EARLY' ? 'UTG' : 'MP');
   const range = weightedPreflopRange({ mode: context.mode, difficulty, position: position as never, situation });
   const hand = normalizeHandClass(context.self.holeCards, context.mode);
   return range.classes.find((entry) => entry.notation === hand.notation)?.weight ?? 0;
@@ -47,7 +54,7 @@ function preflopAction(context: PublicTableContext, difficulty: AIDifficulty, pe
   const situation = classification.situation;
   const strength = handStrength(context);
   const hand = normalizeHandClass(context.self.holeCards, context.mode);
-  const position = context.detailedPosition ?? context.position;
+  const position = context.self.isButton ? 'BTN' : context.self.isBigBlind ? 'BB' : context.detailedPosition ?? context.position;
   const tournament = options.tournament;
   const effectiveStackBB = tournament?.effectiveStackBB ?? tournament?.stackBB ?? classification.effectiveStack / Math.max(1, context.bigBlind);
   const canRaise = Boolean(legal(context, 'raise-to') ?? legal(context, 'bet-to'));
@@ -126,7 +133,7 @@ function preflopAction(context: PublicTableContext, difficulty: AIDifficulty, pe
   if (situation === 'FACING_OPEN') {
     const squeeze = classification.isSqueeze;
     const baseValue3BetProbability = premium ? 0.98
-      : highBroadway ? (openerEarly ? 0.78 : 0.64)
+      : highBroadway ? (openerEarly ? 0.58 : openerLate ? 0.7 : 0.64)
       : mediumPair ? (hand.high === 11 ? (openerEarly ? 0.62 : 0.68) : hand.high === 10 ? (openerEarly ? 0.44 : 0.5) : (openerEarly ? 0.3 : 0.38))
       : 0;
     const personalityThreeBetNudge = personality.id === 'LOOSE_AGGRESSIVE' ? 0.06 : personality.id === 'TIGHT' ? -0.04 : personality.id === 'CALLING' ? -0.08 : 0;
@@ -147,13 +154,17 @@ function preflopAction(context: PublicTableContext, difficulty: AIDifficulty, pe
     // example, facing an all-in legal action only), rather than falling back
     // to a silent fold.
     if (premium && canAllIn && !canRaise) return { kind: 'all-in' };
+    const headsUpDefense = context.tableSize === 2 && context.self.isBigBlind && opener === 'BTN';
     const callThreshold = 0.28 + openPressure + pressure * 0.5 + (openerEarly ? 0.05 : openerLate ? -0.03 : 0)
+      - (headsUpDefense ? 0.1 : 0)
       + (classification.callerCount > 0 ? 0.02 * Math.min(2, classification.callerCount) : 0)
       - personality.callBias * 0.8;
     if (pressure >= 0.16 && !premium && !highBroadway) return undefined;
     const canFlat = canCall && !trash && (
       highBroadway || broadway || mediumPair || smallPair || connected || suitedWheelA
-    ) && strength >= callThreshold;
+    ) && strength >= callThreshold || headsUpDefense && canCall && !trash
+      && (hand.category === 'SUITED' || hand.category === 'PAIR' || hand.high >= 10)
+      && strength >= callThreshold;
     if (canFlat) return { kind: 'call' };
     return undefined;
   }
@@ -182,9 +193,24 @@ function preflopAction(context: PublicTableContext, difficulty: AIDifficulty, pe
   return undefined;
 }
 function postflopAction(context: PublicTableContext, difficulty: AIDifficulty, simulationBudget: number, personality: AIPersonality): PlayerAction | undefined {
-  const lastAggressor = [...context.actionHistory].reverse().find((entry) => entry.street === context.street && isAggressive(entry.action));
-  const decision = decidePostflopV2({ holeCards: context.self.holeCards, board: context.communityCards, mode: context.mode, potAmount: context.potAmount, toCall: context.toCall, effectiveStack: context.self.stack, bigBlind: context.bigBlind, difficulty, simulationBudget, personality, priorAggressor: lastAggressor?.playerId === context.aiPlayerId ? 'SELF' : 'OPPONENT', opponentCount: context.opponents.filter((opponent) => !opponent.folded).length, legalActions: context.legalActions.map((entry) => entry.kind) });
-  if (decision === 'CHECK' && legal(context, 'check')) return { kind: 'check' }; if (decision === 'CALL' && legal(context, 'call')) return { kind: 'call' }; if (decision === 'FOLD' && legal(context, 'fold')) return { kind: 'fold' }; if (decision === 'ALL_IN' && legal(context, 'all-in')) return { kind: 'all-in' }; if (decision === 'BET' || decision === 'RAISE') return raiseAction(context, 'VALUE', context.detailedPosition ?? context.position); return undefined;
+  const lastAggressor = [...context.actionHistory].reverse().find((entry) => entry.street === context.street && (entry.isAggressiveRaise ?? (isAggressive(entry.action) && !entry.isAllInCall)));
+  const aggressor = lastAggressor ? context.opponents.find((opponent) => opponent.id === lastAggressor.playerId) : undefined;
+  const effectiveStackBeforeAction = aggressor
+    ? Math.min(context.self.stack, aggressor.stack + aggressor.streetContribution)
+    : context.self.stack;
+  const effectiveStackBehindAfterCall = aggressor
+    ? Math.min(Math.max(0, context.self.stack - context.toCall), aggressor.stack)
+    : context.self.stack;
+  const decision = decidePostflopV2WithIntent({
+    holeCards: context.self.holeCards, board: context.communityCards, mode: context.mode,
+    potAmount: context.potAmount, toCall: context.toCall, effectiveStack: effectiveStackBeforeAction,
+    effectiveStackBeforeAction, effectiveStackBehindAfterCall, bigBlind: context.bigBlind, difficulty,
+    simulationBudget, personality, opponentFoldRate: averageOpponentFold(context),
+    priorAggressor: lastAggressor?.playerId === context.aiPlayerId ? 'SELF' : 'OPPONENT',
+    opponentCount: context.opponents.filter((opponent) => !opponent.folded).length,
+    legalActions: context.legalActions.map((entry) => entry.kind),
+  });
+  if (decision.action === 'CHECK' && legal(context, 'check')) return { kind: 'check' }; if (decision.action === 'CALL' && legal(context, 'call')) return { kind: 'call' }; if (decision.action === 'FOLD' && legal(context, 'fold')) return { kind: 'fold' }; if (decision.action === 'ALL_IN' && legal(context, 'all-in')) return { kind: 'all-in' }; if (decision.action === 'BET' || decision.action === 'RAISE') return raiseAction(context, decision.intent === 'NONE' ? 'VALUE' : decision.intent, context.detailedPosition ?? context.position); return undefined;
 }
 export function chooseAction(context: PublicTableContext, difficulty: AIDifficulty, personality: PersonalityChoice, rng: RandomSource, options: DecisionOptions = {}): PlayerAction {
   if (context.actingSeat !== context.aiSeat) return fallback(context); const profile = getDifficultyProfile(difficulty); const character = getPersonality(options.forcedPersonality ?? personality);

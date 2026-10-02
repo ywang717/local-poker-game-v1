@@ -18,6 +18,9 @@ export type PreflopClassification = {
   currentAggressorId?: string;
   jamAggressorId?: string;
   jamType?: JamType;
+  jamIncrement?: number;
+  jamIsFullRaise?: boolean;
+  jamIsCall?: boolean;
   isSqueeze: boolean;
 };
 
@@ -78,18 +81,32 @@ export function classifyPreflopSituation(context: Pick<PublicTableContext, 'acti
   let lastAggressorId: string | undefined;
   let jamAggressorId: string | undefined;
   let jamType: JamType | undefined;
+  let jamIncrement: number | undefined;
+  let jamIsFullRaise: boolean | undefined;
+  let jamIsCall: boolean | undefined;
 
   for (const action of context.actionHistory.filter((entry) => entry.street === 'PRE_FLOP')) {
     if (action.isBlind) continue;
     if (action.action === 'call') callerCount += 1;
     const target = action.totalTo > 0 ? action.totalTo : currentBet + action.amount;
     const full = isFullRaise(action, currentBet, lastFullRaise);
+    const increase = action.increase ?? Math.max(0, target - currentBet);
+    const allInCall = action.action === 'all-in' && (action.isAllInCall ?? target <= currentBet);
+    const allInRaise = action.action === 'all-in' && !allInCall && target > currentBet;
     // An all-in is only the current price if no later full raise replaced it.
     // Keep its id separately from the last full aggressor so a short all-in
     // does not accidentally reopen raising rights or rewrite the open count.
-    if (action.action === 'all-in' && action.playerId !== context.aiPlayerId) {
+    if (allInRaise && action.playerId !== context.aiPlayerId) {
       jamAggressorId = action.playerId;
       jamType = raiseCount === 0 ? 'OPEN_JAM' : raiseCount === 1 ? '3BET_JAM' : '4BET_JAM';
+      jamIncrement = increase;
+      jamIsFullRaise = full;
+      jamIsCall = false;
+    }
+    if (allInCall && action.playerId !== context.aiPlayerId && !jamAggressorId) {
+      jamIncrement = 0;
+      jamIsFullRaise = false;
+      jamIsCall = true;
     }
     if (full) {
       raiseCount += 1;
@@ -99,9 +116,15 @@ export function classifyPreflopSituation(context: Pick<PublicTableContext, 'acti
       // A later full raise replaces any earlier all-in as the current price.
       jamAggressorId = undefined;
       jamType = undefined;
-      if (action.action === 'all-in' && action.playerId !== context.aiPlayerId) {
+      jamIncrement = undefined;
+      jamIsFullRaise = undefined;
+      jamIsCall = undefined;
+      if (allInRaise && action.playerId !== context.aiPlayerId) {
         jamAggressorId = action.playerId;
         jamType = raiseCount === 1 ? 'OPEN_JAM' : raiseCount === 2 ? '3BET_JAM' : '4BET_JAM';
+        jamIncrement = increase;
+        jamIsFullRaise = full;
+        jamIsCall = false;
       }
     }
     currentBet = Math.max(currentBet, target);
@@ -110,10 +133,16 @@ export function classifyPreflopSituation(context: Pick<PublicTableContext, 'acti
   const ownStack = context.self.stack + context.self.handContribution;
   const currentAggressorId = jamAggressorId ?? lastAggressorId;
   const relevantAggressor = currentAggressorId ? context.players.find((player) => player.id === currentAggressorId) : undefined;
+  const relevantAggressorAction = currentAggressorId
+    ? [...context.actionHistory].reverse().find((action) => action.street === 'PRE_FLOP' && action.playerId === currentAggressorId && (action.isAggressiveRaise ?? (action.action === 'raise-to' || action.action === 'bet-to' || action.action === 'all-in')))
+    : undefined;
   const fallbackStacks = context.players.filter((player) => !player.folded && player.id !== context.aiPlayerId).map((player) => player.stack).filter(Number.isFinite);
+  const ownStackBeforeAction = context.self.stack + context.self.handContribution;
+  const aggressorStackBeforeAction = relevantAggressorAction?.stackBeforeAction
+    ?? (relevantAggressor ? relevantAggressor.stack + relevantAggressor.handContribution : undefined);
   const effectiveStack = relevantAggressor
-    ? Math.min(context.self.stack, relevantAggressor.stack)
-    : Math.min(context.self.stack, ...fallbackStacks);
+    ? Math.min(ownStackBeforeAction, aggressorStackBeforeAction ?? relevantAggressor.stack)
+    : Math.min(ownStackBeforeAction, ...fallbackStacks);
   const facingAllIn = Boolean(jamAggressorId);
   const situation = facingAllIn
     ? 'FACING_ALL_IN'
@@ -122,7 +151,7 @@ export function classifyPreflopSituation(context: Pick<PublicTableContext, 'acti
         : raiseCount === 2 ? 'FACING_3BET' : 'FACING_4BET_PLUS';
   return {
     situation, openerId, lastAggressorId, currentAggressorId, jamAggressorId, jamType,
-    raiseCount, callerCount, currentBet, isSqueeze: raiseCount === 1 && callerCount > 0,
+    raiseCount, callerCount, currentBet, jamIncrement, jamIsFullRaise, jamIsCall, isSqueeze: raiseCount === 1 && callerCount > 0,
     effectiveStack: Number.isFinite(effectiveStack) ? effectiveStack : ownStack,
   };
 }

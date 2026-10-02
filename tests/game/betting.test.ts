@@ -113,6 +113,9 @@ describe('betting legality and transitions', () => {
     expect(after.ok).toBe(true);
     expect(getLegalActions(after.state, 'a')).toEqual(expect.arrayContaining([{ kind: 'fold' }, { kind: 'call', amount: 50 }]));
     expect(getLegalActions(after.state, 'a').some((action) => action.kind === 'raise-to')).toBe(false);
+    expect(getLegalActions(after.state, 'a').some((action) => action.kind === 'all-in')).toBe(false);
+    expect(applyAction(after.state, { playerId: 'a', action: { kind: 'all-in' } }).ok).toBe(false);
+    expect(after.state.actionHistory.at(-1)).toMatchObject({ isAllInCall: false, isAggressiveRaise: true, increase: 50, isFullRaise: false });
   });
 
   it('reopens raise rights after a complete raise', () => {

@@ -37,4 +37,25 @@ describe('V2.2 canonical positions and preflop classification', () => {
     ] }, 'ai');
     expect(classifyPreflopSituation(context)).toMatchObject({ situation: 'FACING_ALL_IN', raiseCount: 1, openerId: 'opener', lastAggressorId: 'opener', effectiveStack: 40 });
   });
+
+  it('does not classify an all-in call as a jam and preserves the opener stack', () => {
+    const state = startHand(createTable({ mode: 'STANDARD', tableSize: 6, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [
+      { id: 'ai', seat: 0, stack: 1_000 }, { id: 'opener', seat: 3, stack: 500 }, { id: 'short', seat: 4, stack: 20 },
+    ] }), createDeck('STANDARD'));
+    const context = toPublicContext({ ...state, currentBet: 30, actionHistory: [
+      { playerId: 'opener', street: 'PRE_FLOP', action: 'raise-to', amount: 20, totalTo: 30, stackBeforeAction: 500, previousBet: 10, increase: 20, isAggressiveRaise: true, isFullRaise: true },
+      { playerId: 'short', street: 'PRE_FLOP', action: 'all-in', amount: 20, totalTo: 30, stackBeforeAction: 20, previousBet: 30, increase: 0, isAllInCall: true, isAggressiveRaise: false, isFullRaise: false },
+    ] }, 'ai');
+    expect(classifyPreflopSituation(context)).toMatchObject({ situation: 'FACING_OPEN', jamAggressorId: undefined, jamIsCall: true, effectiveStack: 500 });
+  });
+
+  it('uses the stack before the action when classifying a jam', () => {
+    const state = startHand(createTable({ mode: 'STANDARD', tableSize: 6, smallBlind: 5, bigBlind: 10, dealerSeat: 0, players: [
+      { id: 'ai', seat: 0, stack: 1_000 }, { id: 'jammer', seat: 3, stack: 100 },
+    ] }), createDeck('STANDARD'));
+    const context = toPublicContext({ ...state, currentBet: 100, actionHistory: [
+      { playerId: 'jammer', street: 'PRE_FLOP', action: 'all-in', amount: 100, totalTo: 100, stackBeforeAction: 100, previousBet: 10, increase: 90, isAllInCall: false, isAggressiveRaise: true, isFullRaise: true },
+    ] }, 'ai');
+    expect(classifyPreflopSituation(context)).toMatchObject({ situation: 'FACING_ALL_IN', jamAggressorId: 'jammer', effectiveStack: 100, jamIsFullRaise: true, jamIncrement: 90 });
+  });
 });

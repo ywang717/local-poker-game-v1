@@ -77,7 +77,14 @@ export function getLegalActions(state: GameState, playerId: string): LegalAction
     const minAmount = state.currentBet + state.lastFullRaise;
     if (maxAmount >= minAmount) actions.push({ kind: 'raise-to', minAmount, maxAmount });
   }
-  if (!onlyActionablePlayer || player.stack <= toCall) actions.push({ kind: 'all-in', amount: player.stack });
+  // An all-in with enough chips to exceed the current price is a raise.  It
+  // must obey the same reopen rule as raise-to; only an all-in call remains
+  // legal after a short, non-reopening all-in raise.
+  const allInIsCall = player.stack <= toCall;
+  const raiseRightsOpen = !player.hasActedStreet;
+  if (allInIsCall || (!onlyActionablePlayer && raiseRightsOpen)) {
+    actions.push({ kind: 'all-in', amount: player.stack });
+  }
   return actions;
 }
 
@@ -105,6 +112,7 @@ export function applyAction(state: GameState, command: { playerId: string; actio
   const next = cloneState(state);
   const nextPlayer = next.players.find((entry) => entry.id === command.playerId)!;
   const previousBet = next.currentBet;
+  const stackBeforeAction = nextPlayer.stack;
   let targetContribution = nextPlayer.streetContribution;
   let paid = 0;
   if (command.action.kind === 'fold') {
@@ -142,12 +150,24 @@ export function applyAction(state: GameState, command: { playerId: string; actio
       }
     }
   }
+
+  const increase = Math.max(0, targetContribution - previousBet);
+  const isAggressiveRaise = increase > 0;
+  const isAllInCall = command.action.kind === 'all-in' && !isAggressiveRaise;
+  const isFullRaise = isAggressiveRaise && (previousBet === 0 || increase >= (state.lastFullRaise || state.bigBlind));
   next.actionHistory.push({
     playerId: command.playerId,
     street: next.street as 'PRE_FLOP' | 'FLOP' | 'TURN' | 'RIVER',
     action: command.action.kind,
     amount: paid,
     totalTo: targetContribution,
+    stackBeforeAction,
+    previousBet,
+    increase,
+    isAllInCall,
+    isAggressiveRaise,
+    facingBet: previousBet > player.streetContribution,
+    isFullRaise,
   });
 
   if (onlyOneLivePlayer(next)) {

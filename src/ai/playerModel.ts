@@ -79,7 +79,7 @@ export function recordObservedAction(model: PlayerModel, record: ObservedActionR
     next.vpipSeenHands.push(record.handId);
     next.vpipHands += 1;
   }
-  const raised = record.action === 'bet-to' || record.action === 'raise-to' || record.action === 'all-in';
+  const raised = record.isAggressiveRaise ?? (record.action === 'bet-to' || record.action === 'raise-to' || record.action === 'all-in' && !record.isAllInCall);
   if ((record.isPfr ?? raised) && record.street === 'PRE_FLOP' && record.handId && !next.pfrSeenHands.includes(record.handId)) {
     next.pfrSeenHands.push(record.handId);
     next.pfrHands += 1;
@@ -127,12 +127,16 @@ export function modelRates(model: PlayerModel): { vpip: number; pfr: number; thr
 export function buildPlayerModels(history: readonly HandSummary[]): Readonly<Record<string, PlayerModel>> {
   const models: Record<string, PlayerModel> = {};
   for (const hand of history) {
-    for (const action of hand.actionHistory) {
+    for (const [index, action] of hand.actionHistory.entries()) {
       const current = models[action.playerId] ?? createPlayerModel();
+      const priorStreetAggression = hand.actionHistory.slice(0, index).some((previous) => previous.street === action.street && previous.playerId !== action.playerId && (previous.isAggressiveRaise ?? (previous.action === 'bet-to' || previous.action === 'raise-to' || previous.action === 'all-in' && !previous.isAllInCall)));
       models[action.playerId] = recordObservedAction(current, {
         ...action,
         handId: hand.handId,
-        facingBet: action.action === 'fold' || action.action === 'call',
+        // Legacy pre-flop fold records often contain no preceding public
+        // action, so retain their explicit opportunity for compatibility.
+        // Post-flop opportunities require an actual prior aggressive action.
+        facingBet: action.facingBet ?? (action.street === 'PRE_FLOP' ? action.action === 'fold' || priorStreetAggression : priorStreetAggression),
         // A saved action does not contain enough public history to prove that
         // a raise was a 3-Bet. Only explicit observations may set the flag.
         potAmount: hand.finalPot,

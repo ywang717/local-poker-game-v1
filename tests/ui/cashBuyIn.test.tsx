@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { createCareer } from '../../src/career/careerService';
 import { createDeck } from '../../src/game/cards';
@@ -115,6 +115,7 @@ describe('cash buy-in table UI', () => {
     const host = await mount(game);
     expect(useGameStore.getState().game?.players[0].handContribution).toBe(game.players[0].handContribution);
     await act(async () => host.querySelector<HTMLButtonElement>('.settlement-controls .button--primary')!.click());
+    await vi.waitFor(() => expect(useGameStore.getState().game?.street).toBe('PRE_FLOP'));
     expect(useGameStore.getState().game?.handNumber).toBe(game.handNumber + 1);
     expect(useGameStore.getState().game?.players.find((player) => player.isHuman)?.stack).toBe(2_425);
   });
@@ -146,6 +147,7 @@ describe('cash buy-in table UI', () => {
     await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="cash-buy-in-confirm"]')!.click());
     expect(host.querySelector('[data-testid="zero-stack-continue"]')).not.toBeNull();
     await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="zero-stack-continue"]')!.click());
+    await vi.waitFor(() => expect(useGameStore.getState().game?.street).toBe('PRE_FLOP'));
     expect(useGameStore.getState().game?.street).toBe('PRE_FLOP');
     expect(useGameStore.getState().game?.players.find((player) => player.isHuman)?.stack).toBe(1_200);
     expect(useCareerStore.getState().career?.pendingCashBuyIns[0].status).toBe('APPLIED');
