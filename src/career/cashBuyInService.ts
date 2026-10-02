@@ -70,6 +70,8 @@ export function requestCashBuyIn(career: CareerState, session: MatchSession, tar
     if (existing.sessionId !== session.sessionId || existing.requestedAmount !== amount) throw new Error('Duplicate transaction ID');
     return { career: source, pending: existing };
   }
+  const pendingForSession = source.pendingCashBuyIns.find((entry) => entry.sessionId === session.sessionId && entry.status === 'PENDING');
+  if (pendingForSession) throw new Error('A cash buy-in is already pending for this table');
   const existingTx = source.financialTransactions.find((entry) => entry.transactionId === transactionId);
   if (existingTx) throw new Error('Duplicate transaction ID');
   if (source.currentFunds < amount) throw new Error('Insufficient career funds');

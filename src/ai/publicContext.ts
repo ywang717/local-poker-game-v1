@@ -5,7 +5,10 @@ import type { Position } from './preflopRanges';
 import type { PlayerModel } from './playerModel';
 import { positionForDetailed, type DetailedPosition } from './positionStrategy';
 
-export type PublicPlayerView = Omit<PlayerState, 'holeCards'>;
+export type PublicPlayerView = Omit<PlayerState, 'holeCards'> & {
+  /** Canonical fixed-seat label, included so consumers never remap seats. */
+  detailedPosition?: DetailedPosition;
+};
 export type PublicSelfView = PublicPlayerView & { holeCards: Card[] };
 export type PublicSidePot = { amount: number; eligiblePlayerIds: string[] };
 
@@ -40,7 +43,8 @@ export type PublicTableContext = {
 };
 
 export function positionFor(state: GameState, player: PlayerState): Position {
-  if (state.tableSize === 2) return 'HEADS_UP';
+  const occupiedSeats = state.initialOccupiedSeats ?? state.players.map((entry) => entry.seat);
+  if (state.tableSize === 2 || new Set(occupiedSeats).size <= 2) return 'HEADS_UP';
   if (player.seat === state.smallBlindSeat || player.seat === state.bigBlindSeat) return 'BLINDS';
   // Position is fixed from the occupied seats at hand start. Folded seats
   // remain part of the ring and must not cause the remaining ranges to shift.
@@ -60,9 +64,9 @@ export function positionFor(state: GameState, player: PlayerState): Position {
   return 'MIDDLE';
 }
 
-function publicPlayer(player: PlayerState): PublicPlayerView {
+function publicPlayer(player: PlayerState, state: GameState): PublicPlayerView {
   const { holeCards: _hidden, ...view } = player;
-  return { ...view };
+  return { ...view, detailedPosition: positionForDetailed(state, player.id) };
 }
 
 export function toPublicContext(
@@ -75,7 +79,7 @@ export function toPublicContext(
     : state.players.find((player) => player.id === aiPlayerIdOrSeat);
   if (!selfState) throw new Error(`Unknown AI player ${String(aiPlayerIdOrSeat)}`);
   const aiPlayerId = selfState.id;
-  const players = state.players.map(publicPlayer);
+  const players = state.players.map((player) => publicPlayer(player, state));
   const opponents = players.filter((player) => player.id !== aiPlayerId);
   const potAmount = state.players.reduce((sum, player) => sum + player.handContribution, 0);
   return {
@@ -98,7 +102,7 @@ export function toPublicContext(
     position: positionFor(state, selfState),
     detailedPosition: positionForDetailed(state, selfState.id),
     communityCards: [...state.communityCards],
-    self: { ...publicPlayer(selfState), holeCards: [...selfState.holeCards] },
+    self: { ...publicPlayer(selfState, state), holeCards: [...selfState.holeCards] },
     players,
     opponents,
     sidePots: state.pots.map((pot) => ({ amount: pot.amount, eligiblePlayerIds: [...pot.eligiblePlayerIds] })),

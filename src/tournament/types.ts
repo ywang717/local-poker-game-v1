@@ -1,5 +1,6 @@
 import type { GameMode } from '../game/rules';
 import type { TableLevelId } from '../career/tableLevels';
+import type { PersonalityId } from '../ai/personalities';
 
 export type TournamentPlayer = {
   id: string;
@@ -8,6 +9,8 @@ export type TournamentPlayer = {
   isHuman: boolean;
   stack: number;
   startingStack: number;
+  /** Fixed AI style; optional for old tournament snapshots. */
+  personalityId?: PersonalityId;
 };
 
 export type TournamentElimination = {

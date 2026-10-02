@@ -11,7 +11,8 @@ export type AIExperienceMetrics = {
   vpip: MetricPair; pfr: MetricPair; threeBet: MetricPair; fourBet: MetricPair;
   foldToThreeBet: MetricPair; cBet: MetricPair; checkRaise: MetricPair;
   activeAllIn: MetricPair; callAllIn: MetricPair; preflopAllIn: MetricPair; postflopAllIn: MetricPair;
-  averagePot: MetricPair; raiseSizing: MetricPair; showdown: MetricPair; actions: MetricPair;
+  averagePot: MetricPair; raiseSizing: MetricPair; showdown: MetricPair;
+  showdownHands: MetricPair; wonWithoutShowdown: MetricPair; actions: MetricPair;
 };
 
 export type AIExperienceOptions = { mode: GameMode; tableSize: TableSize; hands: number; seed: number; difficulty: AIDifficulty };
@@ -38,7 +39,7 @@ export function createExperienceAccumulator(): ExperienceAccumulator {
   return {
     metrics: {
       vpip: pair(), pfr: pair(), threeBet: pair(), fourBet: pair(), foldToThreeBet: pair(), cBet: pair(), checkRaise: pair(),
-      activeAllIn: pair(), callAllIn: pair(), preflopAllIn: pair(), postflopAllIn: pair(), averagePot: pair(), raiseSizing: pair(), showdown: pair(), actions: pair(),
+      activeAllIn: pair(), callAllIn: pair(), preflopAllIn: pair(), postflopAllIn: pair(), averagePot: pair(), raiseSizing: pair(), showdown: pair(), showdownHands: pair(), wonWithoutShowdown: pair(), actions: pair(),
     },
     handSamples: new Map(),
   };
@@ -118,6 +119,8 @@ export function runAIExperienceSimulation(options: AIExperienceOptions): AIExper
   });
   const metrics = accumulator.metrics;
   metrics.showdown = { numerator: report.showdowns, denominator: report.handsCompleted };
+  metrics.showdownHands = { numerator: report.showdownHands, denominator: report.handsCompleted };
+  metrics.wonWithoutShowdown = { numerator: report.wonWithoutShowdown, denominator: report.handsCompleted };
   return { ...report, difficulty: options.difficulty, metrics };
 }
 

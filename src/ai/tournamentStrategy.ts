@@ -14,12 +14,15 @@ export function buildTournamentDecisionOptions(state: GameState, actorId?: strin
   const live = state.players.filter((player) => !player.folded && player.stack > 0);
   const bigBlind = Math.max(1, state.bigBlind);
   const effectiveStackBB = Math.min(actor.stack, ...live.filter((player) => player.id !== actor.id).map((player) => player.stack)) / bigBlind;
+  const tournamentRemaining = state.tournamentState?.players.length
+    ?? state.tournamentPlayersRemaining
+    ?? state.players.length;
   const context: TournamentStrategyContext = {
     stackBB: actor.stack / bigBlind,
     effectiveStackBB,
     blindLevel: state.tournamentBlindLevel ?? 1,
     handsAtLevel: state.tournamentHandsAtLevel ?? 0,
-    playersRemaining: state.tournamentPlayersRemaining ?? live.length,
+    playersRemaining: tournamentRemaining,
     entryLevel: state.tableLevel ?? 3,
     shortestStackBB: Math.min(...live.map((player) => player.stack)) / bigBlind,
     ...extra,

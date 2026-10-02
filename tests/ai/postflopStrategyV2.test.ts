@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidePostflopV2 } from '../../src/ai/postflopStrategyV2';
+import { boundedPublicEquity, decidePostflopV2 } from '../../src/ai/postflopStrategyV2';
 import { c } from '../game/cards.test';
 
 describe('V2 post-flop strategy', () => {
@@ -21,5 +21,36 @@ describe('V2 post-flop strategy', () => {
     };
     expect(decidePostflopV2({ ...base, boardTexture: 'DRY' })).toBe('BET');
     expect(decidePostflopV2({ ...base, boardTexture: 'WET' })).toBe('CHECK');
+  });
+
+  it('models every opponent in a multi-way equity sample', () => {
+    const base = {
+      holeCards: [c(14, 'hearts'), c(13, 'hearts')],
+      board: [c(14, 'spades'), c(9, 'diamonds'), c(2, 'clubs')],
+      mode: 'STANDARD' as const,
+      potAmount: 100,
+      toCall: 0,
+      effectiveStack: 1_000,
+      simulationBudget: 48,
+    };
+    const headsUp = boundedPublicEquity({ ...base, opponentCount: 1 }, 48);
+    const threeWay = boundedPublicEquity({ ...base, opponentCount: 2 }, 48);
+    const fourWay = boundedPublicEquity({ ...base, opponentCount: 3 }, 48);
+    expect(headsUp).toBeGreaterThan(threeWay);
+    expect(threeWay).toBeGreaterThanOrEqual(fourWay);
+  });
+
+  it('keeps a made nuts hand at full equity in heads-up and multi-way pots', () => {
+    const base = {
+      holeCards: [c(14, 'spades'), c(13, 'spades')],
+      board: [c(12, 'spades'), c(11, 'spades'), c(10, 'spades')],
+      mode: 'STANDARD' as const,
+      potAmount: 100,
+      toCall: 0,
+      effectiveStack: 1_000,
+      simulationBudget: 32,
+    };
+    expect(boundedPublicEquity({ ...base, opponentCount: 1 }, 32)).toBe(1);
+    expect(boundedPublicEquity({ ...base, opponentCount: 3 }, 32)).toBe(1);
   });
 });

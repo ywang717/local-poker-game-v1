@@ -74,6 +74,18 @@ describe('cash buy-in table UI', () => {
     expect(useCareerStore.getState().career?.pendingCashBuyIns).toHaveLength(1);
   });
 
+  it('refunds a pending reservation when the modal cancel action is used', async () => {
+    const host = await mount();
+    const startingFunds = useCareerStore.getState().career!.currentFunds;
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="cash-buy-in"]')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('.cash-buy-in-options button')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="cash-buy-in-confirm"]')!.click());
+    expect(host.querySelector('[data-testid="cash-buy-in-cancel"]')).not.toBeNull();
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="cash-buy-in-cancel"]')!.click());
+    expect(useCareerStore.getState().career?.currentFunds).toBe(startingFunds);
+    expect(useCareerStore.getState().career?.pendingCashBuyIns[0].status).toBe('REFUNDED');
+  });
+
   it('disables buy-in after leave request without changing current-hand state', async () => {
     const game = cashGame();
     const before = structuredClone(game);

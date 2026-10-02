@@ -11,6 +11,8 @@ describe('continuous seeded simulation', () => {
     let totalCalls = 0;
     let totalRaises = 0;
     let totalAllIns = 0;
+    let totalShowdowns = 0;
+    let totalWonWithoutShowdown = 0;
     for (const mode of modes) {
       for (const tableSize of tableSizes) {
         const report = runSimulation({ mode, tableSize, hands: 1_000, seed: 0x1400_0000 + tableSize + (mode === 'SHORT_DECK' ? 100 : 0) });
@@ -26,6 +28,8 @@ describe('continuous seeded simulation', () => {
         totalCalls += report.callCount;
         totalRaises += report.raiseCount;
         totalAllIns += report.allInCount;
+        totalShowdowns += report.showdownHands;
+        totalWonWithoutShowdown += report.wonWithoutShowdown;
       }
     }
     expect(totalHands).toBe(14_000);
@@ -33,6 +37,8 @@ describe('continuous seeded simulation', () => {
     expect(totalCalls).toBeGreaterThan(0);
     expect(totalRaises).toBeGreaterThan(0);
     expect(totalAllIns).toBeGreaterThan(0);
+    expect(totalShowdowns + totalWonWithoutShowdown).toBe(totalHands);
+    expect(totalShowdowns / totalHands).toBeLessThan(1);
   }, 60_000);
 
   it('passes ten reproducible multi-seed smoke runs', () => {

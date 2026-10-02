@@ -1,5 +1,17 @@
 export type PersonalityId = 'TIGHT' | 'LOOSE_AGGRESSIVE' | 'CALLING' | 'BALANCED';
 
+/** Stable assignment order used when a table config does not provide an
+ * explicit personality.  The order is deterministic for a session, which
+ * keeps an AI's style stable across hands and after a reload. */
+export const AI_PERSONALITY_ORDER: readonly PersonalityId[] = [
+  'BALANCED', 'TIGHT', 'LOOSE_AGGRESSIVE', 'CALLING', 'BALANCED',
+];
+
+export function personalityForAiIndex(index: number): PersonalityId {
+  if (!Number.isSafeInteger(index) || index < 0) return 'BALANCED';
+  return AI_PERSONALITY_ORDER[index % AI_PERSONALITY_ORDER.length];
+}
+
 export type AIPersonality = {
   id: PersonalityId;
   label: string;

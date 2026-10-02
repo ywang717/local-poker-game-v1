@@ -27,7 +27,10 @@ export type SimulationOptions = {
 
 export type SimulationReport = {
   mode: GameMode; tableSize: TableSize; handsRequested: number; handsCompleted: number;
-  actions: number; foldCount: number; callCount: number; raiseCount: number; allInCount: number; showdowns: number;
+  actions: number; foldCount: number; callCount: number; raiseCount: number; allInCount: number;
+  /** Deprecated alias kept for existing reports; equals showdownHands. */
+  showdowns: number;
+  showdownHands: number; wonWithoutShowdown: number; showdownRate: number;
   deadlocks: number; illegalActions: number; negativeChipStates: number; unclaimedPots: number; refundErrors: number;
   chipConservationFailures: number; rebuyCount: number; maxSidePots: number; maxActions: number; digest: string;
 };
@@ -59,7 +62,8 @@ function assertSafeState(state: GameState): void {
 function newReport(options: SimulationOptions): SimulationReport {
   return {
     mode: options.mode, tableSize: options.tableSize, handsRequested: options.hands, handsCompleted: 0,
-    actions: 0, foldCount: 0, callCount: 0, raiseCount: 0, allInCount: 0, showdowns: 0,
+    actions: 0, foldCount: 0, callCount: 0, raiseCount: 0, allInCount: 0,
+    showdowns: 0, showdownHands: 0, wonWithoutShowdown: 0, showdownRate: 0,
     deadlocks: 0, illegalActions: 0, negativeChipStates: 0, unclaimedPots: 0, refundErrors: 0,
     chipConservationFailures: 0, rebuyCount: 0, maxSidePots: 0, maxActions: 0, digest: '',
   };
@@ -101,7 +105,7 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
       const actor = state.players.find((player) => player.seat === state.actingSeat);
       if (!actor) { report.illegalActions += 1; throw new Error(`Missing acting player at ${state.handId}`); }
       const context = toPublicContext(state, actor.id);
-      const action = chooseAction(context, options.difficulty ?? 3, PERSONALITIES.BALANCED, decisionRng);
+      const action = chooseAction(context, options.difficulty ?? 3, actor.personalityId ?? PERSONALITIES.BALANCED, decisionRng);
       options.onAction?.(context, action);
       const transition = applyAction(state, { playerId: actor.id, action });
       if (!transition.ok) { report.illegalActions += 1; throw new Error(`Illegal action at ${state.handId}: ${transition.error.message}`); }
@@ -116,7 +120,16 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
       try { assertSafeState(state); } catch (error) { report.negativeChipStates += 1; throw error; }
     }
 
-    if (state.street === 'SHOWDOWN') report.showdowns += 1;
+    // The engine reaches SHOWDOWN for both a genuine hand comparison and the
+    // faster one-player-win path after every other player folds.  Only the
+    // former is a showdown for experience metrics.
+    const livePlayers = state.players.filter((player) => !player.folded).length;
+    if (state.street === 'SHOWDOWN' && livePlayers >= 2) {
+      report.showdowns += 1;
+      report.showdownHands += 1;
+    } else if (livePlayers === 1) {
+      report.wonWithoutShowdown += 1;
+    }
     const settled = settleGameState(state);
     const result = settled.result;
     const endingChips = settled.state.players.reduce((sum, player) => sum + player.stack, 0);
@@ -128,9 +141,10 @@ export function runContinuousTableSimulation(options: SimulationOptions): Simula
     report.maxSidePots = Math.max(report.maxSidePots, result.pots.length);
     report.maxActions = Math.max(report.maxActions, actionSteps);
     report.handsCompleted += 1;
+    report.showdownRate = report.handsCompleted > 0 ? report.showdownHands / report.handsCompleted : 0;
     outcomes.push(`${state.handId}:${actionSteps}:${result.totalPot}:${result.totalRefunded}:${result.awards.map((award) => `${award.playerId}=${award.amount}`).join(',')}:${handActions.join('|')}`);
 
-    players = settled.state.players.map((player) => ({ id: player.id, name: player.name, seat: player.seat, stack: player.stack, isHuman: player.isHuman }));
+    players = settled.state.players.map((player) => ({ id: player.id, name: player.name, seat: player.seat, stack: player.stack, isHuman: player.isHuman, personalityId: player.personalityId }));
     dealerSeat = nextDealerSeat(options.tableSize, state.dealerSeat, occupiedSeats);
   }
   report.digest = hash(JSON.stringify({ options, outcomes }));

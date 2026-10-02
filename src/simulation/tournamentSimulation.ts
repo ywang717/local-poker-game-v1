@@ -130,7 +130,7 @@ export function runTournamentSimulation(options: TournamentSimulationOptions): T
         if (!actor) throw new Error(`Missing acting player at ${game.handId}`);
         const context = toPublicContext(game, actor.id);
         const stackBB = actor.stack / Math.max(1, game.bigBlind);
-        const action = chooseAction(context, difficulty, PERSONALITIES.BALANCED, decisionRng, {
+        const action = chooseAction(context, difficulty, actor.personalityId ?? PERSONALITIES.BALANCED, decisionRng, {
           matchType: 'MINI_TOURNAMENT',
           tournament: {
             stackBB,

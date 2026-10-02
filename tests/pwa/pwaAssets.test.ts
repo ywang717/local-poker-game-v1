@@ -39,14 +39,13 @@ describe('PWA release assets', () => {
       'npm run typecheck',
       'npm test',
       'npm run test:ai',
-      'npm run test:ai:experience',
       'npm run test:cash-buyin',
       'npm run test:tournament',
-      'npm run test:simulation',
+      'npm run test:simulation:smoke',
       'npm run build',
     ]) expect(workflow).toContain(command);
     const uploadPosition = workflow.indexOf('actions/upload-pages-artifact');
-    for (const command of ['npm ci', 'npm run typecheck', 'npm test', 'npm run test:ai', 'npm run test:ai:experience', 'npm run test:cash-buyin', 'npm run test:tournament', 'npm run test:simulation', 'npm run build']) {
+    for (const command of ['npm ci', 'npm run typecheck', 'npm test', 'npm run test:ai', 'npm run test:cash-buyin', 'npm run test:tournament', 'npm run test:simulation:smoke', 'npm run build']) {
       expect(workflow.indexOf(command)).toBeLessThan(uploadPosition);
     }
   });

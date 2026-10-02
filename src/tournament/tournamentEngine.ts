@@ -6,6 +6,7 @@ import { createMatchSession } from '../match/session';
 import { getTableLevel } from '../career/tableLevels';
 import { getBlindStructure } from './blindStructure';
 import type { StartTournamentInput, TournamentPlayer, TournamentState } from './types';
+import { personalityForAiIndex } from '../ai/personalities';
 
 let tournamentSequence = 0;
 
@@ -39,6 +40,7 @@ export function startTournament(input: StartTournamentInput = {}): TournamentSta
       isHuman: false,
       stack: startingStack,
       startingStack,
+      personalityId: personalityForAiIndex(index),
     })),
   ];
   const entryFee = input.entryFee ?? level.buyIn;
@@ -65,7 +67,7 @@ export function startTournamentHand(state: TournamentState, rng: RandomSource = 
   const table = createTable({
     mode: state.mode, tableSize: 6, smallBlind: state.smallBlind, bigBlind: state.bigBlind,
     dealerSeat, sessionId: state.tournamentId, matchType: 'MINI_TOURNAMENT', tableLevel: state.tableLevel,
-    session, players: players.map((player) => ({ id: player.id, name: player.name, seat: player.seat, stack: player.stack, isHuman: player.isHuman })),
+    session, players: players.map((player) => ({ id: player.id, name: player.name, seat: player.seat, stack: player.stack, isHuman: player.isHuman, personalityId: player.personalityId })),
   });
   table.handNumber = state.handNumber;
   table.tournamentBlindLevel = state.blindLevel;

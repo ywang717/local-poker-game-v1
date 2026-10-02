@@ -5,6 +5,7 @@ import { CURRENT_SAVE_VERSION, type HandSnapshot, type VersionedSave } from '../
 import type { GameState } from '../game/gameState';
 import { getTableLevel, type TableLevelId } from '../career/tableLevels';
 import type { MatchType } from '../match/matchTypes';
+import { personalityForAiIndex } from '../ai/personalities';
 
 function isObject(value: unknown): value is Record<string, any> { return typeof value === 'object' && value !== null; }
 function levelForBigBlind(bigBlind: unknown): TableLevelId {
@@ -56,6 +57,17 @@ export function migrateHandSnapshot(data: unknown): HandSnapshot {
   const matchType: MatchType = state.matchType === 'MINI_TOURNAMENT' ? 'MINI_TOURNAMENT' : 'CASH';
   state.sessionId = sessionId; state.matchType = matchType; state.tableLevel = tableLevel;
   state.session = state.session ?? { sessionId, matchType, tableLevel, mode };
+  // V2.0 snapshots did not persist AI styles. Assign a deterministic default
+  // once during migration so future hands keep the same style after reload.
+  let aiIndex = 0;
+  if (Array.isArray(state.players)) {
+    for (const player of state.players) {
+      if (!player.isHuman) {
+        player.personalityId = player.personalityId ?? personalityForAiIndex(aiIndex);
+        aiIndex += 1;
+      }
+    }
+  }
   if (isObject(state.tournamentState)) {
     state.tournamentState = {
       ...state.tournamentState,
@@ -64,6 +76,15 @@ export function migrateHandSnapshot(data: unknown): HandSnapshot {
       rewardPaid: state.tournamentState.rewardPaid === true,
       spectator: state.tournamentState.spectator === true,
     };
+    let tournamentAiIndex = 0;
+    if (Array.isArray(state.tournamentState.players)) {
+      for (const player of state.tournamentState.players) {
+        if (!player.isHuman) {
+          player.personalityId = player.personalityId ?? personalityForAiIndex(tournamentAiIndex);
+          tournamentAiIndex += 1;
+        }
+      }
+    }
   }
   return { saveVersion: CURRENT_SAVE_VERSION, savedAt: typeof data.savedAt === 'string' ? data.savedAt : new Date().toISOString(), state };
 }

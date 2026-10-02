@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDeck } from '../../src/game/cards';
 import { createTable, startHand } from '../../src/game/gameEngine';
 import { positionForDetailed } from '../../src/ai/positionStrategy';
+import { toPublicContext } from '../../src/ai/publicContext';
 
 describe('detailed fixed positions', () => {
   it('maps six-player seats to UTG, HJ, CO, BTN and blinds', () => {
@@ -14,6 +15,10 @@ describe('detailed fixed positions', () => {
     ]);
     const folded = { ...state, players: state.players.map((player) => player.id === 'p3' ? { ...player, folded: true, status: 'FOLDED' as const } : player) };
     expect(folded.players.map((player) => positionForDetailed(folded, player.id))).toEqual([
+      'BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO',
+    ]);
+    const context = toPublicContext(folded, 'p0');
+    expect(context.players.map((player) => player.detailedPosition)).toEqual([
       'BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO',
     ]);
   });

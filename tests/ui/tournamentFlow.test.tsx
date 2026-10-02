@@ -53,6 +53,15 @@ describe('mini tournament flow UI', () => {
     expect(html).not.toContain('data-testid="cash-buy-in"');
   });
 
+  it('offers fast simulation and exit controls after human elimination', () => {
+    const tournament = startTournament({ tournamentId: 'ui-spectator', humanId: 'human' });
+    const spectator = { ...tournament, spectator: true, players: tournament.players.filter((player) => !player.isHuman) };
+    const game = startTournamentHand(spectator, () => 0.5);
+    const html = renderToStaticMarkup(<GamePage game={{ ...game, tournamentState: spectator }} tournament={spectator} matchType="MINI_TOURNAMENT" previousHand={null} paused={false} leaveRequested={false} canContinue={false} onContinue={() => undefined} onLeave={() => undefined} onPause={() => undefined} onAction={() => undefined} onFastSimulate={() => undefined} onExitTournament={() => undefined} />);
+    expect(html).toContain('data-testid="tournament-fast-simulate"');
+    expect(html).toContain('data-testid="tournament-exit-spectator"');
+  });
+
   it('drives production App entry and forfeit leave accounting', async () => {
     const career = createCareer('玩家');
     const host = document.createElement('div');

@@ -48,5 +48,8 @@ describe('V2 experience metrics', () => {
     recordExperienceHand(report, { showdown: true });
     recordExperienceHand(report, { showdown: false });
     expect(report.showdown).toEqual({ numerator: 1, denominator: 2 });
+    expect(report.showdownHands).toEqual({ numerator: 1, denominator: 2 });
+    expect(report.wonWithoutShowdown).toEqual({ numerator: 1, denominator: 2 });
+    expect(report.showdownRate).toBe(0.5);
   });
 });

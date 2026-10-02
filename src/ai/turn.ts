@@ -35,11 +35,16 @@ export function chooseActionForState(state: GameState, rng: RandomSource = Math.
   const context = toPublicContext(state, actor.id, opponentModels);
   const liveStacks = state.players.filter((player) => !player.folded && player.id !== actor.id).map((player) => player.stack);
   const effectiveStackBB = Math.min(actor.stack, ...liveStacks.filter((stack) => Number.isFinite(stack))) / Math.max(1, state.bigBlind);
-  const playersRemaining = state.players.filter((player) => !player.folded).length;
+  // Tournament remaining players is the number of entrants still alive
+  // between hands. Folded seats are still in the tournament and must not
+  // change this value during the current hand.
+  const playersRemaining = state.tournamentState?.players.length
+    ?? state.tournamentPlayersRemaining
+    ?? state.players.length;
   const tournamentOptions = matchType === 'MINI_TOURNAMENT'
     ? buildTournamentDecisionOptions(state, actor.id, { effectiveStackBB, playersRemaining, entryLevel: state.tableLevel ?? difficulty, blindLevel: (state as GameStateWithTournament).tournamentBlindLevel ?? 1, handsAtLevel: (state as GameStateWithTournament).tournamentHandsAtLevel ?? 0 })
     : undefined;
-  const action = chooseAction(context, difficulty, PERSONALITIES.BALANCED, rng, tournamentOptions ?? {
+  const action = chooseAction(context, difficulty, actor.personalityId ?? PERSONALITIES.BALANCED, rng, tournamentOptions ?? {
     matchType,
     tournament: matchType === 'MINI_TOURNAMENT' ? { effectiveStackBB, stackBB: actor.stack / Math.max(1, state.bigBlind), blindLevel: state.tableLevel ?? state.session?.tableLevel ?? difficulty, playersRemaining, handsAtLevel: state.handNumber } : undefined,
   });

@@ -4,6 +4,7 @@ import type { PotRefund } from './pot';
 import type { MatchSession, MatchType } from '../match/matchTypes';
 import type { TableLevelId } from '../career/tableLevels';
 import type { TournamentState } from '../tournament/types';
+import type { PersonalityId } from '../ai/personalities';
 
 export const SUPPORTED_TABLE_SIZES = [2, 3, 4, 5, 6, 8, 9] as const;
 export type TableSize = (typeof SUPPORTED_TABLE_SIZES)[number];
@@ -16,6 +17,8 @@ export type TablePlayerConfig = {
   seat: number;
   stack: number;
   isHuman?: boolean;
+  /** Optional fixed AI style. Omitted legacy configs receive a deterministic default. */
+  personalityId?: PersonalityId;
 };
 
 export type TableConfig = {
@@ -37,6 +40,8 @@ export type PlayerState = {
   seat: number;
   stack: number;
   isHuman: boolean;
+  /** Fixed for the lifetime of a cash session or tournament. */
+  personalityId?: PersonalityId;
   holeCards: Card[];
   streetContribution: number;
   handContribution: number;

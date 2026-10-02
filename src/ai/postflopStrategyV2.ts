@@ -33,19 +33,34 @@ export function analyzePostflopV2(input: PostflopDecisionInput) {
   const potOdds = calculatePotOdds(input.toCall, input.potAmount);
   const spr = calculateSpr(input.effectiveStack, input.potAmount);
   const selectedTexture = input.boardTexture ?? texture(input.board);
-  const budget = input.simulationBudget ?? ((input.difficulty ?? 1) >= 5 ? 64 : (input.difficulty ?? 1) >= 4 ? 32 : 0);
+  // Keep the public equity estimate deliberately bounded.  The estimate is
+  // used on every post-flop decision, including mobile devices, so a larger
+  // difficulty level should improve the sample quality without turning into
+  // an unbounded solver.  Multi-way pots use the same budget and spend each
+  // sample on all opponents rather than silently modelling heads-up only.
+  const budget = input.simulationBudget ?? ((input.difficulty ?? 1) >= 5 ? 48 : (input.difficulty ?? 1) >= 4 ? 24 : 0);
   const estimatedEquity = boundedPublicEquity(input, budget);
   return { ...strength, texture: selectedTexture, potOdds, spr, opponentCount: Math.max(1, input.opponentCount ?? 1), priorAggressor: input.priorAggressor ?? 'OPPONENT', simulationBudget: budget, estimatedEquity };
 }
 
-/** Sample public runouts and one random opponent holding without hidden data. */
+/**
+ * Sample public runouts and all currently live opponent holdings without
+ * looking at hidden cards.  Every card is removed from the sample deck as it
+ * is dealt, so opponents cannot receive duplicate cards or cards from the
+ * board/runout.  Ties contribute an equal share of the sample equity.
+ */
 export function boundedPublicEquity(input: PostflopDecisionInput, budget: number): number {
-  const samples = Math.max(0, Math.min(64, Math.floor(budget)));
+  const samples = Math.max(0, Math.min(48, Math.floor(budget)));
   const fallback = Math.max(0, Math.min(1, postflopStrength(input.holeCards, input.board, input.mode).strength));
   if (samples === 0) return fallback;
-  const known = new Set([...input.holeCards, ...input.board].map((card) => card.id));
-  const remaining = createDeck(input.mode).filter((card) => !known.has(card.id));
-  if (remaining.length < 2) return fallback;
+  // Use rank/suit identity instead of trusting the card's display id. Test
+  // fixtures and old snapshots may use a different id separator, while the
+  // physical card identity is always its rank and suit.
+  const cardKey = (card: Card): string => `${card.rank}:${card.suit}`;
+  const known = new Set([...input.holeCards, ...input.board].map(cardKey));
+  const remaining = createDeck(input.mode).filter((card) => !known.has(cardKey(card)));
+  const opponentCount = Math.max(1, Math.floor(input.opponentCount ?? 1));
+  if (remaining.length < opponentCount * 2) return fallback;
   let total = 0; let seed = 0x9e3779b9;
   for (let index = 0; index < samples; index += 1) {
     seed = Math.imul(seed ^ (index + input.board.length * 131), 1664525) + 1013904223;
@@ -54,13 +69,23 @@ export function boundedPublicEquity(input: PostflopDecisionInput, budget: number
       const slot = Math.abs((seed + offset * 1013904223) | 0) % cards.length;
       return cards.splice(slot, 1)[0];
     };
-    const opponent = [take(1), take(2)];
+    const opponents: Card[][] = [];
+    for (let opponentIndex = 0; opponentIndex < opponentCount; opponentIndex += 1) {
+      opponents.push([take(1 + opponentIndex * 2), take(2 + opponentIndex * 2)]);
+    }
     const runout = [...input.board];
     while (runout.length < 5 && cards.length > 0) runout.push(take(runout.length + 3));
     const hero = evaluateHand(input.holeCards, runout, input.mode);
-    const villain = evaluateHand(opponent, runout, input.mode);
-    const comparison = compareEvaluations(hero, villain, input.mode);
-    total += comparison > 0 ? 1 : comparison === 0 ? 0.5 : 0;
+    const opponentEvaluations = opponents.map((opponent) => evaluateHand(opponent, runout, input.mode));
+    const comparisons = opponentEvaluations.map((evaluation) => compareEvaluations(hero, evaluation, input.mode));
+    const worstOpponentComparison = Math.min(...comparisons);
+    if (worstOpponentComparison > 0) total += 1;
+    else if (worstOpponentComparison === 0) {
+      // A tie is split amongst every player sharing the best hand.  The hero
+      // is known to be in that group because no opponent beat them.
+      const tiedOpponents = comparisons.filter((comparison) => comparison === 0).length;
+      total += 1 / (tiedOpponents + 1);
+    }
   }
   return total / samples;
 }

@@ -6,10 +6,14 @@ export type MetricPair = { numerator: number; denominator: number };
 export type ExperienceMetrics = {
   vpip: MetricPair; pfr: MetricPair; threeBet: MetricPair; fourBet: MetricPair; foldToThreeBet: MetricPair;
   cBet: MetricPair; checkRaise: MetricPair; activeAllIn: MetricPair; callAllIn: MetricPair; preflopAllIn: MetricPair;
-  postflopAllIn: MetricPair; pot: MetricPair; sizing: MetricPair; showdown: MetricPair; actions: MetricPair;
+  postflopAllIn: MetricPair; pot: MetricPair; sizing: MetricPair; showdown: MetricPair;
+  showdownHands: MetricPair; wonWithoutShowdown: MetricPair; actions: MetricPair;
   averagePot?: MetricPair; raiseSizing?: MetricPair;
 };
-export type ExperienceReport = ExperienceMetrics & { metrics: ExperienceMetrics; hands?: number; showdowns?: number; handSamples: Map<string, { vpip: boolean; pfr: boolean }> };
+export type ExperienceReport = ExperienceMetrics & {
+  metrics: ExperienceMetrics; hands?: number; showdowns?: number; showdownRate?: number;
+  handSamples: Map<string, { vpip: boolean; pfr: boolean }>
+};
 export type ExperienceObservationContext = Pick<PublicTableContext, 'street' | 'toCall' | 'potAmount'> & {
   handId?: string; aiPlayerId?: string; bigBlind?: number; currentBet?: number; lastFullRaise?: number;
   actionHistory?: PublicTableContext['actionHistory']; players?: PublicTableContext['players']; self?: { id?: string; stack: number; streetContribution?: number };
@@ -17,12 +21,12 @@ export type ExperienceObservationContext = Pick<PublicTableContext, 'street' | '
 
 function pair(): MetricPair { return { numerator: 0, denominator: 0 }; }
 function metrics(): ExperienceMetrics {
-  return { vpip: pair(), pfr: pair(), threeBet: pair(), fourBet: pair(), foldToThreeBet: pair(), cBet: pair(), checkRaise: pair(), activeAllIn: pair(), callAllIn: pair(), preflopAllIn: pair(), postflopAllIn: pair(), pot: pair(), sizing: pair(), averagePot: pair(), raiseSizing: pair(), showdown: pair(), actions: pair() };
+  return { vpip: pair(), pfr: pair(), threeBet: pair(), fourBet: pair(), foldToThreeBet: pair(), cBet: pair(), checkRaise: pair(), activeAllIn: pair(), callAllIn: pair(), preflopAllIn: pair(), postflopAllIn: pair(), pot: pair(), sizing: pair(), averagePot: pair(), raiseSizing: pair(), showdown: pair(), showdownHands: pair(), wonWithoutShowdown: pair(), actions: pair() };
 }
 
 export function createExperienceReport(): ExperienceReport {
   const values = metrics();
-  return { ...values, metrics: values, hands: 0, showdowns: 0, handSamples: new Map() };
+  return { ...values, metrics: values, hands: 0, showdowns: 0, showdownRate: 0, handSamples: new Map() };
 }
 
 function aggressive(action: PlayerAction): boolean { return action.kind === 'bet-to' || action.kind === 'raise-to' || action.kind === 'all-in'; }
@@ -80,7 +84,16 @@ export const createExperienceAccumulator = createExperienceReport;
 export function recordExperienceHand(report: ExperienceReport, outcome: { showdown: boolean }): ExperienceReport {
   report.hands = (report.hands ?? 0) + 1;
   report.metrics.showdown.denominator += 1;
-  if (outcome.showdown) { report.showdowns = (report.showdowns ?? 0) + 1; report.metrics.showdown.numerator += 1; }
+  report.metrics.showdownHands.denominator += 1;
+  report.metrics.wonWithoutShowdown.denominator += 1;
+  if (outcome.showdown) {
+    report.showdowns = (report.showdowns ?? 0) + 1;
+    report.metrics.showdown.numerator += 1;
+    report.metrics.showdownHands.numerator += 1;
+  } else {
+    report.metrics.wonWithoutShowdown.numerator += 1;
+  }
+  report.showdownRate = report.hands > 0 ? report.metrics.showdownHands.numerator / report.hands : 0;
   return report;
 }
 
@@ -88,6 +101,7 @@ export function recordExperienceHand(report: ExperienceReport, outcome: { showdo
 export function recordExperienceShowdown(report: ExperienceReport): ExperienceReport {
   report.showdowns = (report.showdowns ?? 0) + 1;
   report.metrics.showdown.numerator += 1;
+  report.metrics.showdownHands.numerator += 1;
   return report;
 }
 

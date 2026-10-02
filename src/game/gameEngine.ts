@@ -5,6 +5,7 @@ import type { GameMode } from './rules';
 import type { GameState, TableConfig, TransitionResult } from './gameState';
 import { createMatchSession } from '../match/session';
 import { getTableLevel, type TableLevelId } from '../career/tableLevels';
+import { personalityForAiIndex } from '../ai/personalities';
 
 let fallbackHandIdSequence = 0;
 
@@ -39,6 +40,7 @@ export function createTable(config: TableConfig): GameState {
       seat: player.seat,
       stack: player.stack,
       isHuman: player.isHuman ?? false,
+      personalityId: player.personalityId,
       holeCards: [],
       streetContribution: 0,
       handContribution: 0,
@@ -48,6 +50,16 @@ export function createTable(config: TableConfig): GameState {
       status: player.stack === 0 ? 'WAITING' as const : 'WAITING' as const,
     };
   }).sort((left, right) => left.seat - right.seat);
+  // Assign styles once when a session is created. Subsequent hands pass the
+  // existing personalityId back through TablePlayerConfig, so an AI never
+  // changes style merely because the dealer moved or the page was reloaded.
+  let aiIndex = 0;
+  for (const player of players) {
+    if (!player.isHuman) {
+      player.personalityId = player.personalityId ?? personalityForAiIndex(aiIndex);
+      aiIndex += 1;
+    }
+  }
   const dealerSeat = config.dealerSeat ?? players[0]?.seat ?? 0;
   const session = config.session ?? createMatchSession({ mode: config.mode, tableLevel: config.tableLevel ?? levelForBigBlind(config.bigBlind), matchType: config.matchType ?? 'CASH', sessionId: config.sessionId });
   return {

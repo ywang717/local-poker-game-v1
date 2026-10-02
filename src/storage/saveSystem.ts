@@ -73,6 +73,33 @@ export async function saveHandSnapshot(snapshot: HandSnapshot): Promise<void> {
   await rotateAndWrite('currentHand', migrateHandSnapshot(snapshot));
 }
 
+/**
+ * Persist the career record and the next hand snapshot in one IndexedDB
+ * transaction.  Cash-table transitions update both records together; keeping
+ * them in separate queued writes could otherwise leave a pending top-up in the
+ * career record after the hand snapshot had already advanced (or vice versa).
+ */
+export async function saveCareerAndHandSnapshot(career: CareerState, snapshot: HandSnapshot): Promise<void> {
+  if (snapshot.saveVersion !== CURRENT_SAVE_VERSION && snapshot.saveVersion !== 1) throw new Error('Unsupported hand snapshot version');
+  const migratedSnapshot = migrateHandSnapshot(snapshot);
+  const record = careerRecord(career);
+  const currentHistory = { entries: record.career.handHistory.slice(0, HAND_HISTORY_LIMIT) };
+  const [previousCareer, previousHistory, previousHand] = await Promise.all([
+    readRecord('career', 'current'),
+    readRecord('handHistory', 'current'),
+    readRecord('currentHand', 'current'),
+  ]);
+  const records: { storeName: StoreName; key: string; value: unknown }[] = [
+    { storeName: 'career', key: 'current', value: record },
+    { storeName: 'handHistory', key: 'current', value: currentHistory },
+    { storeName: 'currentHand', key: 'current', value: migratedSnapshot },
+  ];
+  if (previousCareer !== undefined) records.push({ storeName: 'career', key: 'backup', value: previousCareer });
+  if (previousHistory !== undefined) records.push({ storeName: 'handHistory', key: 'backup', value: previousHistory });
+  if (previousHand !== undefined) records.push({ storeName: 'currentHand', key: 'backup', value: previousHand });
+  await writeRecords(records);
+}
+
 export async function loadHandSnapshot(): Promise<HandSnapshot | null> {
   const current = await readRecord<HandSnapshot>('currentHand', 'current');
   const backup = await readRecord<HandSnapshot>('currentHand', 'backup');

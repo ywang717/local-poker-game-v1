@@ -26,10 +26,12 @@ import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
 import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
-import { applyPendingCashBuyIn, cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
+import { cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
+import { persistPreparedCashNextHandTransition, prepareCashNextHandTransition } from './career/cashBuyInTransition';
 import { leaveTable } from './career/careerService';
 import { startTournamentHand, settleTournamentHand } from './tournament/tournamentEngine';
 import { finishTournament, forfeitTournament } from './tournament/tournamentSettlement';
+import { fastSimulateTournamentToEnd } from './tournament/fastSimulation';
 import type { TournamentState } from './tournament/types';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'TOURNAMENT_SELECT' | 'TOURNAMENT_RESULT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
@@ -74,6 +76,7 @@ export function createNextHand(current: GameState): GameState {
     name: player.name,
     seat: player.seat,
     isHuman: player.isHuman,
+    personalityId: player.personalityId,
     stack: player.isHuman ? player.stack : player.stack > 0 ? player.stack : level.buyIn,
   }));
   const table = createTable({ mode: current.mode, tableSize: current.tableSize, smallBlind: current.smallBlind, bigBlind: current.bigBlind, dealerSeat: nextDealer, players, sessionId: current.sessionId, matchType: current.matchType, tableLevel: current.tableLevel, session: current.session });
@@ -151,6 +154,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const [tournamentResult, setTournamentResult] = useState<TournamentState | null>(initialGame?.tournamentState ?? null);
   const recordedSettlement = useRef<string | null>(null);
   const hydratedInitialGame = useRef(false);
+  const cashTransitionInFlight = useRef(false);
 
   useEffect(() => { if (initialCareer && !storeCareer) setCareer(initialCareer); }, [initialCareer, setCareer, storeCareer]);
   useEffect(() => {
@@ -262,7 +266,8 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     }
     requestLeave();
   };
-  const continueHand = () => {
+  const continueHand = async () => {
+    if (cashTransitionInFlight.current) return;
     const current = useGameStore.getState().game;
     if (!current || current.street !== 'SETTLEMENT') return;
     const human = current.players.find((player) => player.isHuman);
@@ -282,20 +287,31 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       return;
     }
     if (nextCareer && human && current.matchType !== 'MINI_TOURNAMENT') {
-      nextCareer = syncActiveTableStack(nextCareer, human.stack);
-      const pending = nextCareer.pendingCashBuyIns.find((entry) => entry.sessionId === current.sessionId && entry.status === 'PENDING');
-      if (pending) {
-        const applied = applyPendingCashBuyIn(nextCareer, pending, human.stack);
-        nextCareer = applied.career;
-        if (applied.appliedAmount > 0) {
-          const players = current.players.map((player) => player.isHuman ? { ...player, stack: player.stack + applied.appliedAmount } : player);
-          nextCareer = syncActiveTableStack(nextCareer, human.stack + applied.appliedAmount);
-          setCareer(nextCareer);
-          setGame(createNextHand({ ...current, players }));
-          return;
-        }
+      const pendingForCurrent = nextCareer.pendingCashBuyIns.some((entry) => entry.status === 'PENDING' && entry.sessionId === current.sessionId);
+      if (human.stack === 0 && !pendingForCurrent) {
+        // A zero stack is a choice point. The leave action is the explicit
+        // cash-out path; continue waits for a rebuy request from the UI.
+        return;
       }
-      setCareer(nextCareer);
+      if (leaveRequested) {
+        finishTableExit(current);
+        return;
+      }
+      cashTransitionInFlight.current = true;
+      try {
+        const prepared = prepareCashNextHandTransition(nextCareer, current, createNextHand);
+        // Update the UI immediately at the hand boundary, then finish the
+        // atomic IndexedDB write. This keeps the button responsive while the
+        // career and snapshot are committed together.
+        setCareer(prepared.career);
+        setGame(prepared.game);
+        await persistPreparedCashNextHandTransition(prepared);
+      } catch (error) {
+        setCashBuyInError(error instanceof Error ? error.message : '下一手保存失败，请重试');
+      } finally {
+        cashTransitionInFlight.current = false;
+      }
+      return;
     }
     if (human?.stack === 0) {
       // A zero stack is a choice point. The leave action is the explicit
@@ -324,7 +340,36 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       setCashBuyInError(error instanceof Error ? error.message : '买入失败');
     }
   };
-  const cancelTableBuyIn = () => setCashBuyInError(null);
+  const cancelTableBuyIn = () => {
+    const current = useGameStore.getState().game;
+    const transaction = useCareerStore.getState().career?.pendingCashBuyIns.find((entry) => entry.status === 'PENDING' && entry.sessionId === current?.sessionId);
+    if (transaction) useCareerStore.getState().cancelPendingCashBuyIn(transaction.transactionId);
+    setCashBuyInError(null);
+  };
+  const fastSimulateTournament = () => {
+    const current = useGameStore.getState().game;
+    const tournament = current?.tournamentState;
+    if (!current || !tournament || !tournament.spectator || tournament.players.length <= 1) return;
+    try {
+      const finished = fastSimulateTournamentToEnd({ tournament, game: current });
+      if (useCareerStore.getState().career) recordTournamentFinish(finished);
+      setTournamentResult(finished);
+      setGame(null);
+      setView('TOURNAMENT_RESULT');
+    } catch (error) {
+      setCashBuyInError(error instanceof Error ? error.message : '快速模拟失败，请继续观战');
+    }
+  };
+  const exitTournamentSpectator = () => {
+    const current = useGameStore.getState().game;
+    const tournament = current?.tournamentState;
+    if (!tournament) return;
+    const result = forfeitTournament(tournament);
+    if (useCareerStore.getState().career) recordTournamentFinish(result);
+    setTournamentResult(result);
+    setGame(null);
+    setView('TOURNAMENT_RESULT');
+  };
   const navigate = (next: AppView) => setView(next);
   let content: React.ReactNode;
   if (view === 'HOME') content = <HomePage career={career} loadError={loadError} onContinue={() => setView(career ? 'CAREER' : 'HOME')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
@@ -335,7 +380,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   else if (view === 'GAME' && game) {
     const activePending = Boolean(career?.pendingCashBuyIns.some((entry) => entry.status === 'PENDING' && entry.sessionId === game.sessionId));
     const currentLevel = getTableLevel(game.tableLevel ?? levelForBigBlind(game.bigBlind));
-    content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+    content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} onFastSimulate={fastSimulateTournament} onExitTournament={exitTournamentSpectator} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
   }
   else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
