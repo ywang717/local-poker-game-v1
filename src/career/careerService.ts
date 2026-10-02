@@ -119,7 +119,7 @@ export function recordTournamentFinish(career: CareerState, state: TournamentSta
   next.financialTransactions = next.financialTransactions ?? [];
   next.recordedTournamentIds = next.recordedTournamentIds ?? [];
   next.tournamentStatistics = next.tournamentStatistics ?? createEmptyTournamentStatistics();
-  if (next.recordedTournamentIds.includes(state.tournamentId)) return next;
+  if (next.recordedTournamentIds.includes(state.tournamentId)) return applyBankruptcyProtection(next);
   const humanId = state.players.find((player) => player.isHuman)?.id
     ?? state.eliminations.find((entry) => !entry.playerId.startsWith('ai-'))?.playerId
     ?? state.rankings.find((entry) => !entry.playerId.startsWith('ai-'))?.playerId
@@ -144,7 +144,10 @@ export function recordTournamentFinish(career: CareerState, state: TournamentSta
   stats.totalNet += reward - state.entryFee;
   stats.bestFinish = stats.bestFinish === null ? humanRank : Math.min(stats.bestFinish, humanRank);
   next.recordedTournamentIds.push(state.tournamentId);
-  return refreshFinancialMarkers(next);
+  // Tournament entry fees are paid before the match starts.  If the player
+  // loses with no cash left, use the same minimum-funds protection as a cash
+  // table exit so the career can continue instead of becoming unusable.
+  return applyBankruptcyProtection(refreshFinancialMarkers(next));
 }
 
 export type BuyInResult = {

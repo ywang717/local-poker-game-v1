@@ -38,4 +38,24 @@ describe('tournament career accounting', () => {
     expect(result.currentFunds).toBe(5_000);
     expect(result.tournamentStatistics).toMatchObject({ tournamentsPlayed: 1, tournamentsWon: 0, totalEntryFees: 5_000, totalRewards: 0, totalNet: -5_000, bestFinish: 2 });
   });
+
+  it('restores the minimum career funds after losing with no remaining balance', () => {
+    const lowFunds = { ...createCareer('玩家'), currentFunds: 5_000 };
+    const entered = enterTournament(lowFunds, 'STANDARD', 1, 'bankruptcy-tournament');
+    expect(entered.career.currentFunds).toBe(0);
+    const terminal = {
+      ...entered.tournament,
+      players: [{ ...entered.tournament.players[1], stack: entered.tournament.startingStack }],
+      rankings: [{ playerId: 'human', rank: 2 }, { playerId: 'ai-1', rank: 1 }],
+      championId: 'ai-1',
+      rewardPaid: true,
+      spectator: true,
+    };
+
+    const result = recordTournamentFinish(entered.career, terminal);
+
+    expect(result.currentFunds).toBe(5_000);
+    expect(result.bankruptcyCount).toBe(1);
+    expect(result.tournamentStatistics.totalNet).toBe(-5_000);
+  });
 });
