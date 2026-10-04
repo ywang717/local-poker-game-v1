@@ -19,6 +19,15 @@ describe('Chinese white minimal UI', () => {
     expect(html).toContain('#FFFFFF');
   });
 
+  it('renders the career VPIP as 入池率', () => {
+    const career = createCareer('测试玩家');
+    career.statistics.overall.totalHands = 4;
+    career.statistics.overall.vpipHands = 1;
+    const html = renderToStaticMarkup(<App initialCareer={career} initialView="STATISTICS" />);
+    expect(html).toContain('入池率');
+    expect(html).toContain('25%');
+  });
+
   it('renders table selection with five levels and the supported table sizes', () => {
     const html = renderToStaticMarkup(<App initialCareer={createCareer('测试玩家')} initialView="TABLE_SELECT" />);
     expect(html).toContain('标准德州');

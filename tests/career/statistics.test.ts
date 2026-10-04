@@ -46,6 +46,14 @@ describe('career statistics and hand history', () => {
     expect(career.handHistory).toHaveLength(2);
   });
 
+  it('records voluntary pots entered and exposes the hand denominator', () => {
+    let career = createCareer('玩家');
+    career = recordHand(career, summary(0, { vpip: true }));
+    career = recordHand(career, summary(1, { vpip: false }));
+    expect(career.statistics.overall.vpipHands).toBe(1);
+    expect(career.statistics.overall.totalHands).toBe(2);
+  });
+
   it('applies a hand id only once and keeps the newest 500 history entries', () => {
     let career = createCareer('玩家');
     career = recordHand(career, summary(1));

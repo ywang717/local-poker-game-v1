@@ -16,6 +16,28 @@ function levelForBigBlind(bigBlind: unknown): TableLevelId {
 function normalizeCareer(input: Record<string, any>): CareerState {
   const base = createCareer(typeof input.nickname === 'string' && input.nickname.trim() ? input.nickname : '玩家');
   const career = { ...base, ...structuredClone(input) } as CareerState;
+  const savedStatistics = isObject(input.statistics) ? input.statistics : {};
+  const savedOverall = isObject(savedStatistics.overall) ? savedStatistics.overall : {};
+  const savedByMode = isObject(savedStatistics.byMode) ? savedStatistics.byMode : {};
+  const savedByPlayerCount = isObject(savedStatistics.byPlayerCount) ? savedStatistics.byPlayerCount : {};
+  const savedByLevel = isObject(savedStatistics.byLevel) ? savedStatistics.byLevel : {};
+  career.statistics = {
+    ...base.statistics,
+    ...savedStatistics,
+    overall: { ...base.statistics.overall, ...savedOverall },
+    byMode: {
+      STANDARD: { ...base.statistics.byMode.STANDARD, ...(isObject(savedByMode.STANDARD) ? savedByMode.STANDARD : {}) },
+      SHORT_DECK: { ...base.statistics.byMode.SHORT_DECK, ...(isObject(savedByMode.SHORT_DECK) ? savedByMode.SHORT_DECK : {}) },
+    },
+    byPlayerCount: Object.fromEntries(Object.entries(base.statistics.byPlayerCount).map(([key, segment]) => [
+      key,
+      { ...segment, ...(isObject(savedByPlayerCount[key]) ? savedByPlayerCount[key] : {}) },
+    ])) as CareerState['statistics']['byPlayerCount'],
+    byLevel: Object.fromEntries(Object.entries(base.statistics.byLevel).map(([key, segment]) => [
+      key,
+      { ...segment, ...(isObject(savedByLevel[key]) ? savedByLevel[key] : {}) },
+    ])) as CareerState['statistics']['byLevel'],
+  };
   career.saveVersion = CURRENT_SAVE_VERSION;
   career.activeTableSessionId = typeof input.activeTableSessionId === 'string' && input.activeTableSessionId ? input.activeTableSessionId : (career.activeTableSessionId ?? null);
   career.financialTransactions = Array.isArray(input.financialTransactions) ? structuredClone(input.financialTransactions) : [];

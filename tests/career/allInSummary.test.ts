@@ -34,4 +34,14 @@ describe('human all-in summary', () => {
     expect(summary?.allIn).toBe(true);
     expect(summary?.allInWon).toBe(true);
   });
+
+  it('marks a hand as VPIP only when the human voluntarily enters pre-flop', () => {
+    const state = settledState();
+    state.actionHistory = [{ playerId: 'human', street: 'PRE_FLOP', action: 'call', amount: 10, totalTo: 20 }];
+    expect(handSummary(state)?.vpip).toBe(true);
+
+    const blindOnly = settledState();
+    blindOnly.actionHistory = [{ playerId: 'human', street: 'PRE_FLOP', action: 'call', amount: 5, totalTo: 5, isBlind: true }];
+    expect(handSummary(blindOnly)?.vpip).toBe(false);
+  });
 });

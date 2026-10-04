@@ -108,6 +108,10 @@ export function handSummary(state: GameState): HandSummary | null {
     .filter((refund) => refund.playerId === human.id)
     .reduce((sum, refund) => sum + refund.amount, 0);
   const humanAllIn = state.actionHistory.some((record) => record.playerId === human.id && record.action === 'all-in');
+  const humanVpip = state.actionHistory.some((record) => record.playerId === human.id
+    && record.street === 'PRE_FLOP'
+    && !record.isBlind
+    && (record.action === 'call' || record.action === 'bet-to' || record.action === 'raise-to' || record.action === 'all-in'));
   const winnerPots = state.pots.filter((pot) => pot.winnerPlayerIds.includes(human.id));
   const hasSplitPot = winnerPots.some((pot) => pot.winnerPlayerIds.length > 1);
   const evaluation = !human.folded && state.communityCards.length >= 5
@@ -134,6 +138,7 @@ export function handSummary(state: GameState): HandSummary | null {
     potResults: state.pots.map((pot) => ({ amount: pot.amount, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
     allIn: humanAllIn,
     allInWon: humanAllIn && playerAward > 0,
+    vpip: humanVpip,
   };
 }
 

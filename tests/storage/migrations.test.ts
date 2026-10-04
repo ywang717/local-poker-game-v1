@@ -33,6 +33,16 @@ describe('save migrations', () => {
     expect(input).toEqual({ saveVersion: 1, career: { nickname: '当前玩家', currentFunds: 10_000 } });
   });
 
+  it('backfills VPIP counters for a career saved before the 入池率 field existed', () => {
+    const migrated = migrateSave({ saveVersion: 2, career: {
+      nickname: '旧统计',
+      currentFunds: 10_000,
+      statistics: { overall: { totalHands: 3 } },
+    } });
+    expect(migrated.career.statistics.overall.totalHands).toBe(3);
+    expect(migrated.career.statistics.overall.vpipHands).toBe(0);
+  });
+
   it('rejects unsupported or malformed saves', () => {
     expect(() => migrateSave({ saveVersion: 99 })).toThrow(/unsupported/i);
     expect(() => migrateSave(null)).toThrow(/invalid/i);
