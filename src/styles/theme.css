@@ -78,6 +78,8 @@ h3 { margin-bottom: 14px; font-size: 15px; }
 .settlement-controls { max-width: 640px; display: grid; gap: 8px; margin: 18px auto 0; padding: 16px; border: 1px solid #E5E5E5; border-radius: 12px; background: #FAFAFA; text-align: center; }
 .settlement-controls > span { color: #666666; font-size: 13px; }
 .settlement-controls > div { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.showdown-controls { max-width: 640px; display: grid; gap: 8px; margin: 18px auto 0; padding: 16px; border: 1px solid #D6E5FA; border-radius: 12px; background: #F5F8FE; color: #246BCE; text-align: center; }
+.showdown-controls > span { color: #666666; font-size: 13px; }
 .spectator-controls { max-width: 640px; display: grid; gap: 10px; margin: 18px auto 0; padding: 16px; border: 1px solid #E5E5E5; border-radius: 12px; background: #FAFAFA; text-align: center; }
 .spectator-controls > div { display: flex; justify-content: center; gap: 8px; }
 .hand-review { max-width: 1200px; margin: 18px auto 0; padding: 16px; border: 1px solid #E5E5E5; border-radius: 12px; background: #FFFFFF; }

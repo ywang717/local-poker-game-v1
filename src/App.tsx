@@ -36,6 +36,13 @@ import type { TournamentState } from './tournament/types';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'TOURNAMENT_SELECT' | 'TOURNAMENT_RESULT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
 
+/** Keep the final board visible before the settlement controls replace it. */
+export function showdownDisplayDelayMs(animationSpeed: 'NORMAL' | 'FAST' | 'INSTANT'): number {
+  if (animationSpeed === 'INSTANT') return 200;
+  if (animationSpeed === 'FAST') return 400;
+  return 700;
+}
+
 export function getStartupDestination(career: CareerState | null, snapshot: HandSnapshot | null): AppView {
   if (snapshot?.state?.handId) return 'GAME';
   if (career) return 'CAREER';
@@ -164,6 +171,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const leaveRequested = useGameStore((state) => state.leaveRequested);
   const requestLeave = useGameStore((state) => state.requestLeave);
   const loadSettings = useSettingsStore((state) => state.load);
+  const animationSpeed = useSettingsStore((state) => state.animationSpeed);
   const career = storeCareer ?? initialCareer ?? null;
   const game = storeGame ?? initialGame ?? null;
   const opponentModels = useMemo(() => buildPlayerModels(career?.handHistory ?? []), [career?.handHistory]);
@@ -203,8 +211,15 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
 
   useEffect(() => {
     if (!game || game.street !== 'SHOWDOWN') return;
-    setGame(settleGameState(game).state);
-  }, [game, setGame]);
+    const handId = game.handId;
+    const settle = () => {
+      const current = useGameStore.getState().game;
+      if (!current || current.street !== 'SHOWDOWN' || current.handId !== handId) return;
+      setGame(settleGameState(current).state);
+    };
+    const timer = setTimeout(settle, showdownDisplayDelayMs(animationSpeed));
+    return () => clearTimeout(timer);
+  }, [animationSpeed, game?.handId, game?.street, setGame]);
 
   const recordSettledHand = (tableState: GameState) => {
     if (tableState.street !== 'SETTLEMENT' || !tableState.handId || recordedSettlement.current === tableState.handId) return;

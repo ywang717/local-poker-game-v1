@@ -43,6 +43,42 @@ describe('betting legality and transitions', () => {
     expect(getLegalActions(state, 'hero')).toEqual(expect.arrayContaining([{ kind: 'fold' }]));
   });
 
+  it('keeps the river betting round open after revealing the river', () => {
+    let state = headsUp();
+    state = applyAction(state, { playerId: 'hero', action: { kind: 'call' } }).state;
+    state = applyAction(state, { playerId: 'villain', action: { kind: 'check' } }).state;
+    state = applyAction(state, { playerId: 'villain', action: { kind: 'check' } }).state;
+    state = applyAction(state, { playerId: 'hero', action: { kind: 'check' } }).state;
+    state = applyAction(state, { playerId: 'villain', action: { kind: 'check' } }).state;
+    state = applyAction(state, { playerId: 'hero', action: { kind: 'check' } }).state;
+
+    expect(state.street).toBe('RIVER');
+    expect(state.communityCards).toHaveLength(5);
+    expect(state.actingSeat).toBe(1);
+    expect(getLegalActions(state, 'villain')).toEqual(expect.arrayContaining([{ kind: 'check' }, { kind: 'fold' }]));
+    expect(state.street).not.toBe('SHOWDOWN');
+    expect(state.street).not.toBe('SETTLEMENT');
+  });
+
+  it('keeps a normal six-player river round open when nobody is all-in', () => {
+    const table = createTable({
+      mode: 'STANDARD', tableSize: 6, smallBlind: 5, bigBlind: 10, dealerSeat: 0,
+      players: Array.from({ length: 6 }, (_, seat) => ({ id: `p${seat}`, seat, stack: 100 })),
+    });
+    let state = startHand(table, createDeck('STANDARD'));
+    let steps = 0;
+    while (state.street !== 'RIVER' && state.street !== 'SHOWDOWN' && steps < 100) {
+      const actor = state.players.find((player) => player.seat === state.actingSeat)!;
+      const legal = getLegalActions(state, actor.id);
+      const action = legal.some((entry) => entry.kind === 'check') ? { kind: 'check' as const } : { kind: 'call' as const };
+      state = applyAction(state, { playerId: actor.id, action }).state;
+      steps += 1;
+    }
+    expect(state.street).toBe('RIVER');
+    expect(state.actingSeat).not.toBeNull();
+    expect(state.players.some((player) => player.allIn)).toBe(false);
+  });
+
   it('runs out the board after a heads-up all-in without giving the caller another bet', () => {
     let state = headsUp();
     state = applyAction(state, { playerId: 'hero', action: { kind: 'all-in' } }).state;
