@@ -54,6 +54,49 @@ describe('career statistics and hand history', () => {
     expect(career.statistics.overall.totalHands).toBe(2);
   });
 
+  it('records real outcomes by starting hand class and keeps modes separate', () => {
+    const aceKingSuited = [
+      { id: '14-spades', rank: 14, suit: 'spades' },
+      { id: '13-spades', rank: 13, suit: 'spades' },
+    ] as const;
+    const aceKingOffsuit = [
+      { id: '14-spades', rank: 14, suit: 'spades' },
+      { id: '13-hearts', rank: 13, suit: 'hearts' },
+    ] as const;
+    let career = createCareer('玩家');
+    career = recordHand(career, summary(10, { mode: 'STANDARD', playerHoleCards: [...aceKingSuited], result: 'WIN' }));
+    career = recordHand(career, summary(11, { mode: 'STANDARD', playerHoleCards: [...aceKingSuited], result: 'SPLIT' }));
+    career = recordHand(career, summary(12, { mode: 'STANDARD', playerHoleCards: [...aceKingSuited], result: 'FOLD' }));
+    career = recordHand(career, summary(13, { mode: 'STANDARD', playerHoleCards: [...aceKingOffsuit], result: 'LOSS' }));
+    career = recordHand(career, summary(14, { mode: 'SHORT_DECK', playerHoleCards: [...aceKingSuited], result: 'LOSS' }));
+
+    expect(career.statistics.byStartingHand.STANDARD.AKs).toEqual({ hands: 3, wins: 1, splits: 1, losses: 1 });
+    expect(career.statistics.byStartingHand.STANDARD.AKo).toEqual({ hands: 1, wins: 0, splits: 0, losses: 1 });
+    expect(career.statistics.byStartingHand.SHORT_DECK.AKs).toEqual({ hands: 1, wins: 0, splits: 0, losses: 1 });
+  });
+
+  it('does not count a hand without two recorded hole cards', () => {
+    const career = recordHand(createCareer('玩家'), summary(20));
+    expect(Object.keys(career.statistics.byStartingHand.STANDARD)).toHaveLength(0);
+    expect(Object.keys(career.statistics.byStartingHand.SHORT_DECK)).toHaveLength(0);
+  });
+
+  it('uses standard starting-hand notation for pocket tens and validates mode ranks', () => {
+    const pocketTens = [
+      { id: '10-spades', rank: 10, suit: 'spades' },
+      { id: '10-hearts', rank: 10, suit: 'hearts' },
+    ] as const;
+    const invalidShortDeck = [
+      { id: '5-spades', rank: 5, suit: 'spades' },
+      { id: '14-hearts', rank: 14, suit: 'hearts' },
+    ] as const;
+    let career = createCareer('玩家');
+    career = recordHand(career, summary(21, { mode: 'STANDARD', playerHoleCards: [...pocketTens] }));
+    career = recordHand(career, summary(22, { mode: 'SHORT_DECK', playerHoleCards: [...invalidShortDeck] }));
+    expect(career.statistics.byStartingHand.STANDARD.TT.hands).toBe(1);
+    expect(career.statistics.byStartingHand.SHORT_DECK).toEqual({});
+  });
+
   it('applies a hand id only once and keeps the newest 500 history entries', () => {
     let career = createCareer('玩家');
     career = recordHand(career, summary(1));

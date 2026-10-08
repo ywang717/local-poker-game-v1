@@ -40,23 +40,29 @@ function compareRanked(left: RankedFive, right: RankedFive, rules: RuleConfig): 
   return 0;
 }
 
-function findStraightHigh(ranks: readonly number[], rules: RuleConfig): number | null {
-  const unique = new Set(ranks);
+function findStraightHigh(cards: readonly Card[], rules: RuleConfig, communityAceIds: ReadonlySet<string>): number | null {
+  const unique = new Set(cards.map((card) => card.rank));
   for (const window of rules.straightWindows) {
+    const isLowAceWindow = window[0] === 14;
+    const hasCommunityAce = cards.some((card) => communityAceIds.has(card.id));
+    if (isLowAceWindow && rules.lowAceRequiresCommunityAce && !hasCommunityAce) continue;
     if (window.every((rank) => unique.has(rank))) {
-      return Math.max(...window.filter((rank) => rank !== 14 || window[0] !== 14));
+      // The low-Ace window starts with Ace, but Ace itself is not demoted to
+      // another card rank. Only the straight's comparison high card changes:
+      // 5 for A2345, or 9 for A6789 in short deck.
+      return isLowAceWindow ? rules.lowAceStraightHighCard : window[window.length - 1];
     }
   }
   return null;
 }
 
-function evaluateFive(cards: readonly Card[], rules: RuleConfig): RankedFive {
+function evaluateFive(cards: readonly Card[], rules: RuleConfig, communityAceIds: ReadonlySet<string>): RankedFive {
   const ranks = cards.map((card) => card.rank).sort((left, right) => right - left);
   const counts = new Map<number, number>();
   for (const rank of ranks) counts.set(rank, (counts.get(rank) ?? 0) + 1);
   const groups = [...counts.entries()].sort((left, right) => right[1] - left[1] || right[0] - left[0]);
   const flush = cards.every((card) => card.suit === cards[0].suit);
-  const straightHigh = findStraightHigh(ranks, rules);
+  const straightHigh = findStraightHigh(cards, rules, communityAceIds);
 
   if (flush && straightHigh !== null) {
     return {
@@ -100,10 +106,11 @@ export function evaluateHand(
   if (cards.some((card) => !rules.ranks.includes(card.rank))) {
     throw new Error(`Card rank is not valid for ${mode}`);
   }
+  const communityAceIds = new Set(board.filter((card) => card.rank === 14).map((card) => card.id));
   const candidates = combinations(cards, 5);
   let best: { cards: Card[]; ranked: RankedFive } | null = null;
   for (const candidate of candidates) {
-    const ranked = evaluateFive(candidate, rules);
+    const ranked = evaluateFive(candidate, rules, communityAceIds);
     if (!best || compareRanked(ranked, best.ranked, rules) > 0) best = { cards: candidate, ranked };
   }
   if (!best) throw new Error('No five-card combination available');

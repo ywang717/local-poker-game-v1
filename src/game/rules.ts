@@ -17,6 +17,10 @@ export type RuleConfig = {
   mode: GameMode;
   ranks: readonly Rank[];
   straightWindows: readonly (readonly Rank[])[];
+  /** High card used only to compare the mode's special low-Ace straight. */
+  lowAceStraightHighCard: Rank;
+  /** Short-deck low Ace is available only when that Ace is a community card. */
+  lowAceRequiresCommunityAce: boolean;
   categoryRank: Readonly<Record<HandCategory, number>>;
   labels: Readonly<Record<HandCategory, { zh: string; en: string }>>;
 };
@@ -71,6 +75,8 @@ export function getRuleConfig(mode: GameMode): RuleConfig {
     mode,
     ranks,
     straightWindows: straightWindows(ranks),
+    lowAceStraightHighCard: mode === 'SHORT_DECK' ? 9 : 5,
+    lowAceRequiresCommunityAce: mode === 'SHORT_DECK',
     categoryRank: orderedCategoryRank,
     labels,
   };

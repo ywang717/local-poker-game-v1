@@ -41,6 +41,20 @@ describe('save migrations', () => {
     } });
     expect(migrated.career.statistics.overall.totalHands).toBe(3);
     expect(migrated.career.statistics.overall.vpipHands).toBe(0);
+    expect(migrated.career.statistics.byStartingHand).toEqual({ STANDARD: {}, SHORT_DECK: {} });
+  });
+
+  it('preserves valid starting-hand counters and repairs malformed counters', () => {
+    const migrated = migrateSave({ saveVersion: 2, career: {
+      nickname: '手牌统计',
+      statistics: { byStartingHand: {
+        STANDARD: { AKs: { hands: 8, wins: 3, splits: 1, losses: 4 }, junk: { hands: -1, wins: 5 } },
+        SHORT_DECK: { AA: { hands: 2, wins: 1, splits: 0, losses: 1 } },
+      } },
+    } });
+    expect(migrated.career.statistics.byStartingHand.STANDARD.AKs).toEqual({ hands: 8, wins: 3, splits: 1, losses: 4 });
+    expect(migrated.career.statistics.byStartingHand.STANDARD.junk).toEqual({ hands: 0, wins: 5, splits: 0, losses: 0 });
+    expect(migrated.career.statistics.byStartingHand.SHORT_DECK.AA).toEqual({ hands: 2, wins: 1, splits: 0, losses: 1 });
   });
 
   it('rejects unsupported or malformed saves', () => {

@@ -6,6 +6,11 @@ import { postflopStrength } from './postflop';
 import { calculatePotOdds, calculateSpr } from './decisionFeatures';
 import type { AIDifficulty } from './difficulty';
 import { getPersonality, type AIPersonality, type PersonalityId } from './personalities';
+import { classifyRiverHand } from './riverHandQuality';
+import type { RiverHandQuality } from './riverHandQuality';
+
+export { classifyRiverHand } from './riverHandQuality';
+export type { RiverHandQuality } from './riverHandQuality';
 
 export type PostflopAction = 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'FOLD' | 'ALL_IN';
 export type BoardTexture = 'DRY' | 'WET' | 'PAIRED' | 'MONOTONE' | 'CONNECTED';
@@ -28,6 +33,11 @@ export type PostflopDecisionInput = {
   effectiveStackBeforeAction?: number;
   effectiveStackBehindAfterCall?: number;
   opponentFoldRate?: number;
+  /** Public river line metadata. Counts only aggressive actions on this river. */
+  riverAggressiveActionCount?: number;
+  riverAggressorPosition?: string;
+  /** Needed to distinguish an all-in call from an all-in raise. */
+  selfStack?: number;
   /** Personality is a bounded decision preference, never a math/equity input. */
   personality?: PersonalityId | AIPersonality;
 };
@@ -127,8 +137,89 @@ function deterministicMix(input: PostflopDecisionInput): number {
   return ((value * 2654435761) >>> 0) / 0x1_0000_0000;
 }
 
+function riverMadeHandScore(quality: RiverHandQuality): number {
+  switch (quality) {
+    case 'AIR': return 0;
+    case 'BOARD_ONLY_PAIR': return 0.24;
+    case 'BOARD_ONLY_HAND': return 0.43;
+    case 'WEAK_PAIR': return 0.4;
+    case 'MIDDLE_PAIR': return 0.5;
+    case 'TOP_PAIR_WEAK_KICKER': return 0.57;
+    case 'TOP_PAIR_GOOD_KICKER': return 0.7;
+    case 'OVERPAIR': return 0.74;
+    case 'TWO_PAIR_PLUS': return 0.86;
+  }
+}
+
+function riverCallMargin(input: PostflopDecisionInput, personality: AIPersonality, quality: RiverHandQuality): number {
+  const qualityMargin: Record<RiverHandQuality, number> = {
+    AIR: 0.2,
+    BOARD_ONLY_PAIR: 0.16,
+    BOARD_ONLY_HAND: 0.08,
+    WEAK_PAIR: 0.1,
+    MIDDLE_PAIR: 0.055,
+    TOP_PAIR_WEAK_KICKER: 0.035,
+    TOP_PAIR_GOOD_KICKER: -0.025,
+    OVERPAIR: -0.045,
+    TWO_PAIR_PLUS: -0.1,
+  };
+  const betToPot = input.toCall / Math.max(1, input.potAmount);
+  // Convert the price share into an approximate bet/pot fraction so larger
+  // river bets demand a modestly stronger bluff-catcher.
+  const betFraction = betToPot >= 0.99 ? 100 : betToPot / Math.max(0.01, 1 - betToPot);
+  const sizePressure = Math.min(0.08, Math.max(0, betFraction - 0.5) * 0.08);
+  const aggressionCount = Math.max(1, input.riverAggressiveActionCount ?? 1);
+  const repeatedPressure = Math.min(0.12, (aggressionCount - 1) * 0.06);
+  const extraOpponents = Math.max(0, (input.opponentCount ?? 1) - 1);
+  const multiwayPressure = Math.min(0.16, extraOpponents * 0.055);
+  const earlyAggressor = ['UTG', 'UTG1', 'MP', 'EARLY'].includes(input.riverAggressorPosition ?? '') ? 0.025 : 0;
+  const skillMargin = ((input.difficulty ?? 1) - 3) * 0.008;
+  return qualityMargin[quality] + sizePressure + repeatedPressure + multiwayPressure + earlyAggressor + skillMargin - personality.callBias * 0.45;
+}
+
+function decideRiverFacingBet(
+  input: PostflopDecisionInput,
+  analysis: PostflopAnalysis,
+  personality: AIPersonality,
+  mix: number,
+  canCall: boolean,
+  canRaise: boolean,
+  canFold: boolean,
+  canAllIn: boolean,
+): PostflopDecision {
+  const quality = classifyRiverHand(input.holeCards, input.board, input.mode);
+  if (quality === 'AIR') {
+    if (canFold) return { action: 'FOLD', intent: 'NONE' };
+    if (canCall) return { action: 'CALL', intent: 'NONE' };
+    if (canAllIn && (input.selfStack ?? Number.POSITIVE_INFINITY) <= input.toCall) return { action: 'ALL_IN', intent: 'NONE' };
+    return { action: 'FOLD', intent: 'NONE' };
+  }
+
+  const score = riverMadeHandScore(quality);
+  const requiredScore = analysis.potOdds + riverCallMargin(input, personality, quality);
+  const strongValue = quality === 'TWO_PAIR_PLUS';
+  const selfStack = input.selfStack ?? input.effectiveStack;
+  const jamThreshold = Math.max(0.82, 0.86 - personality.aggression * 0.04);
+  if (strongValue && canAllIn && selfStack > input.toCall && analysis.spr <= 0.9 && score >= jamThreshold) {
+    return { action: 'ALL_IN', intent: 'VALUE' };
+  }
+  if (strongValue && canRaise) {
+    const raiseChance = Math.max(0.18, Math.min(0.58,
+      0.28 + personality.aggression * 0.8 + (analysis.spr <= 3 ? 0.08 : 0) - (analysis.opponentCount - 1) * 0.07));
+    if (mix < raiseChance) return { action: 'RAISE', intent: 'VALUE' };
+  }
+  if (score >= requiredScore) {
+    if (canCall) return { action: 'CALL', intent: 'NONE' };
+    if (canAllIn && (input.selfStack ?? Number.POSITIVE_INFINITY) <= input.toCall) return { action: 'ALL_IN', intent: 'NONE' };
+  }
+  return { action: canFold ? 'FOLD' : canCall ? 'CALL' : 'FOLD', intent: 'NONE' };
+}
+
 export function decidePostflopV2WithIntent(input: PostflopDecisionInput): PostflopDecision {
-  const analysis = analyzePostflopV2(input);
+  // The board is complete on the river. The dedicated response deliberately
+  // avoids sampling uniformly random holdings that ignore the public bet line.
+  const analysisInput = input.board.length === 5 && input.toCall > 0 ? { ...input, simulationBudget: 0 } : input;
+  const analysis = analyzePostflopV2(analysisInput);
   const personality = getPersonality(input.personality ?? 'BALANCED');
   const textureAdjustment = analysis.texture === 'WET' || analysis.texture === 'CONNECTED' || analysis.features.monotone || analysis.features.connected
     ? -0.08
@@ -143,8 +234,10 @@ export function decidePostflopV2WithIntent(input: PostflopDecisionInput): Postfl
   const mix = deterministicMix(input);
   const strongValue = analysis.strength >= 0.7 && (['THREE_OF_A_KIND', 'STRAIGHT', 'FLUSH', 'FULL_HOUSE', 'FOUR_OF_A_KIND', 'STRAIGHT_FLUSH', 'ROYAL_FLUSH'].includes(analysis.madeCategory ?? '') || analysis.madeCategory === 'TWO_PAIR' && strength >= 0.76);
   const draw = analysis.drawPotential >= 0.18;
+  if (input.board.length === 5 && input.toCall > 0) {
+    return decideRiverFacingBet(input, analysis, personality, mix, canCall, canRaise, can('fold', true), canAllIn);
+  }
   if (canAllIn && analysis.spr <= 0.9 && strength >= jamThreshold) return { action: 'ALL_IN', intent: strongValue ? 'VALUE' : 'SEMI_BLUFF' };
-  if (input.toCall > 0 && input.board.length === 5 && analysis.madeCategory === 'HIGH_CARD' && can('fold', true)) return { action: 'FOLD', intent: 'NONE' };
   if (input.toCall > 0 && strength < foldCutoff && !draw) return { action: can('fold', true) ? 'FOLD' : (canCheck ? 'CHECK' : 'CALL'), intent: 'NONE' };
   const headsUp = analysis.opponentCount <= 1;
   if (input.toCall > 0 && canRaise && strongValue) {

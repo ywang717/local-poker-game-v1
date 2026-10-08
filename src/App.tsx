@@ -25,7 +25,8 @@ import { flushGamePersistenceQueue, useGameStore } from './store/gameStore';
 import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
-import { loadCareer, loadHandSnapshot } from './storage/saveSystem';
+import { loadCareer, loadHandSnapshot, saveCareerAndHandSnapshot } from './storage/saveSystem';
+import { CURRENT_SAVE_VERSION } from './types/persistence';
 import { cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
 import { persistPreparedCashNextHandTransition, prepareCashNextHandTransition, type PreparedCashNextHandTransition } from './career/cashBuyInTransition';
 import { leaveTable } from './career/careerService';
@@ -64,6 +65,24 @@ export async function commitCashNextHandAndPublish(
   await persistPreparedCashNextHandTransition(prepared);
   publishCareer(prepared.career);
   publishGame(prepared.game);
+}
+
+/** Commit tournament history and the next hand in one durable boundary. */
+export async function commitTournamentNextHandAndPublish(
+  career: CareerState,
+  nextHand: GameState,
+  publishCareer: (career: CareerState) => void,
+  publishGame: (game: GameState) => void,
+): Promise<void> {
+  await flushCareerPersistenceQueue();
+  await flushGamePersistenceQueue();
+  await saveCareerAndHandSnapshot(career, {
+    saveVersion: CURRENT_SAVE_VERSION,
+    savedAt: new Date().toISOString(),
+    state: structuredClone(nextHand),
+  });
+  publishCareer(career);
+  publishGame(nextHand);
 }
 
 /** Production cash-out ordering shared by the App transition and integration tests. */
@@ -108,6 +127,7 @@ export function createNextHand(current: GameState): GameState {
 export function handSummary(state: GameState): HandSummary | null {
   const human = state.players.find((player) => player.isHuman);
   if (!human || !state.handId) return null;
+  const matchType = state.matchType ?? state.session?.matchType;
   const playerAward = state.pots.flatMap((pot) => pot.awards)
     .filter((award) => award.playerId === human.id)
     .reduce((sum, award) => sum + award.amount, 0);
@@ -126,9 +146,11 @@ export function handSummary(state: GameState): HandSummary | null {
     : null;
   return {
     handId: state.handId,
+    matchType,
+    tournamentId: matchType === 'MINI_TOURNAMENT' ? state.tournamentState?.tournamentId ?? state.sessionId : undefined,
     timestamp: new Date().toISOString(),
     mode: state.mode,
-    tableLevel: getTableLevel(levelForBigBlind(state.bigBlind)).id,
+    tableLevel: state.tableLevel ?? getTableLevel(levelForBigBlind(state.bigBlind)).id,
     tableSize: state.tableSize,
     smallBlind: state.smallBlind,
     bigBlind: state.bigBlind,
@@ -223,9 +245,11 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
 
   const recordSettledHand = (tableState: GameState) => {
     if (tableState.street !== 'SETTLEMENT' || !tableState.handId || recordedSettlement.current === tableState.handId) return;
-    recordedSettlement.current = tableState.handId;
     const summary = handSummary(tableState);
-    if (summary && tableState.matchType !== 'MINI_TOURNAMENT' && useCareerStore.getState().career) recordHand(summary);
+    if (summary && useCareerStore.getState().career) {
+      recordHand(summary);
+      recordedSettlement.current = tableState.handId;
+    }
   };
 
   const finishTableExit = (tableState: GameState) => {
@@ -260,7 +284,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     if (!game || game.street !== 'SETTLEMENT') return;
     if (shouldFinishTableExitAfterSettlement(game, leaveRequested)) finishTableExit(game);
     else recordSettledHand(game);
-  }, [game, leaveRequested]);
+  }, [game, leaveRequested, career]);
 
   const ensureCareer = () => career ?? createNewCareer('玩家');
   const startNewCareer = (nickname: string) => {
@@ -307,6 +331,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const human = current.players.find((player) => player.isHuman);
     let nextCareer = useCareerStore.getState().career;
     if (current.matchType === 'MINI_TOURNAMENT' && current.tournamentState) {
+      recordSettledHand(current);
       const advanced = settleTournamentHand(current.tournamentState, current);
       if (advanced.players.length === 1) {
         const finished = finishTournament(advanced).state;
@@ -317,7 +342,17 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
         return;
       }
       const nextHand = startTournamentHand(advanced);
-      setGame({ ...nextHand, tournamentState: advanced });
+      const nextGame = { ...nextHand, tournamentState: advanced };
+      nextCareer = useCareerStore.getState().career;
+      if (!nextCareer) return;
+      cashTransitionInFlight.current = true;
+      try {
+        await commitTournamentNextHandAndPublish(nextCareer, nextGame, setCareer, setGameWithoutPersistence);
+      } catch (error) {
+        setCashBuyInError(error instanceof Error ? error.message : '下一手保存失败，请重试');
+      } finally {
+        cashTransitionInFlight.current = false;
+      }
       return;
     }
     if (nextCareer && human && current.matchType !== 'MINI_TOURNAMENT') {
@@ -412,7 +447,10 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   else if (view === 'GAME' && game) {
     const activePending = Boolean(career?.pendingCashBuyIns.some((entry) => entry.status === 'PENDING' && entry.sessionId === game.sessionId));
     const currentLevel = getTableLevel(game.tableLevel ?? levelForBigBlind(game.bigBlind));
-    content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} onFastSimulate={fastSimulateTournament} onExitTournament={exitTournamentSpectator} opponentModels={opponentModels} previousHand={career?.handHistory[0] ?? null} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
+    const previousHand = game.matchType === 'MINI_TOURNAMENT'
+      ? career?.handHistory.find((entry) => entry.tournamentId === game.tournamentState?.tournamentId) ?? null
+      : career?.handHistory[0] ?? null;
+    content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} onFastSimulate={fastSimulateTournament} onExitTournament={exitTournamentSpectator} opponentModels={opponentModels} previousHand={previousHand} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
   }
   else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;

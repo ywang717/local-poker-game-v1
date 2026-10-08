@@ -36,14 +36,56 @@ describe('standard hand evaluator', () => {
 });
 
 describe('short-deck evaluator', () => {
-  it('recognizes A6789 as a straight', () => {
+  it('recognizes A6789 when the Ace is on the board', () => {
+    const result = evaluateHand(
+      [c(6, 'diamonds'), c(13, 'clubs')],
+      [c(14, 'spades'), c(7, 'clubs'), c(8, 'hearts'), c(9, 'spades'), c(12, 'diamonds')],
+      'SHORT_DECK',
+    );
+    expect(result.category).toBe('STRAIGHT');
+    expect(result.rankVector[0]).toBe(9);
+  });
+
+  it('does not use a hole-card Ace as the low Ace for A6789', () => {
     const result = evaluateHand(
       [c(14, 'spades'), c(6, 'diamonds')],
       [c(7, 'clubs'), c(8, 'hearts'), c(9, 'spades'), c(13, 'clubs'), c(12, 'diamonds')],
       'SHORT_DECK',
     );
-    expect(result.category).toBe('STRAIGHT');
-    expect(result.rankVector[0]).toBe(9);
+
+    expect(result.category).toBe('HIGH_CARD');
+    expect(result.rankVector[0]).toBe(14);
+  });
+
+  it('keeps Ace high outside the A6789 low-Ace straight', () => {
+    const board = [c(6, 'clubs'), c(8, 'diamonds'), c(10, 'hearts'), c(12, 'clubs'), c(7, 'spades')];
+    const aceHigh = evaluateHand([c(14, 'spades'), c(11, 'hearts')], board, 'SHORT_DECK');
+    const kingHigh = evaluateHand([c(13, 'diamonds'), c(11, 'clubs')], board, 'SHORT_DECK');
+
+    expect(aceHigh.category).toBe('HIGH_CARD');
+    expect(aceHigh.rankVector[0]).toBe(14);
+    expect(compareEvaluations(aceHigh, kingHigh, 'SHORT_DECK')).toBeGreaterThan(0);
+  });
+
+  it('ranks a pair of Aces above a pair of Kings in short deck', () => {
+    const board = [c(6, 'clubs'), c(7, 'hearts'), c(8, 'spades'), c(10, 'diamonds'), c(11, 'clubs')];
+    const aces = evaluateHand([c(14, 'spades'), c(14, 'hearts')], board, 'SHORT_DECK');
+    const kings = evaluateHand([c(13, 'spades'), c(13, 'hearts')], board, 'SHORT_DECK');
+
+    expect(aces.category).toBe('ONE_PAIR');
+    expect(aces.rankVector[0]).toBe(14);
+    expect(compareEvaluations(aces, kings, 'SHORT_DECK')).toBeGreaterThan(0);
+  });
+
+  it('ranks A6789 below a 6789T straight in short deck', () => {
+    const board = [c(14, 'clubs'), c(7, 'hearts'), c(8, 'spades'), c(9, 'diamonds'), c(12, 'clubs')];
+    const aceLow = evaluateHand([c(6, 'spades'), c(13, 'diamonds')], board, 'SHORT_DECK');
+    const tenBoard = [c(6, 'clubs'), c(7, 'hearts'), c(8, 'spades'), c(9, 'diamonds'), c(12, 'clubs')];
+    const tenHigh = evaluateHand([c(10, 'spades'), c(13, 'hearts')], tenBoard, 'SHORT_DECK');
+
+    expect(aceLow.rankVector[0]).toBe(9);
+    expect(tenHigh.rankVector[0]).toBe(10);
+    expect(compareEvaluations(tenHigh, aceLow, 'SHORT_DECK')).toBeGreaterThan(0);
   });
 
   it('ranks a flush above a full house', () => {

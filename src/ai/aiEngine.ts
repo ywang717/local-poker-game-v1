@@ -201,11 +201,15 @@ function postflopAction(context: PublicTableContext, difficulty: AIDifficulty, s
   const effectiveStackBehindAfterCall = aggressor
     ? Math.min(Math.max(0, context.self.stack - context.toCall), aggressor.stack)
     : context.self.stack;
+  const riverAggressiveActionCount = context.street === 'RIVER'
+    ? context.actionHistory.filter((entry) => entry.street === 'RIVER' && (entry.isAggressiveRaise ?? (isAggressive(entry.action) && !entry.isAllInCall))).length
+    : undefined;
   const decision = decidePostflopV2WithIntent({
     holeCards: context.self.holeCards, board: context.communityCards, mode: context.mode,
     potAmount: context.potAmount, toCall: context.toCall, effectiveStack: effectiveStackBeforeAction,
     effectiveStackBeforeAction, effectiveStackBehindAfterCall, bigBlind: context.bigBlind, difficulty,
     simulationBudget, personality, opponentFoldRate: averageOpponentFold(context),
+    riverAggressiveActionCount, riverAggressorPosition: aggressor?.detailedPosition, selfStack: context.self.stack,
     priorAggressor: lastAggressor?.playerId === context.aiPlayerId ? 'SELF' : 'OPPONENT',
     opponentCount: context.opponents.filter((opponent) => !opponent.folded).length,
     legalActions: context.legalActions.map((entry) => entry.kind),

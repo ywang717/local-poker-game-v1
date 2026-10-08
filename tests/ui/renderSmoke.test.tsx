@@ -28,6 +28,18 @@ describe('Chinese white minimal UI', () => {
     expect(html).toContain('25%');
   });
 
+  it('renders starting-hand win statistics with mode selection', () => {
+    const career = createCareer('测试玩家');
+    career.statistics.byStartingHand.STANDARD.AKs = { hands: 4, wins: 2, splits: 1, losses: 1 };
+    const html = renderToStaticMarkup(<App initialCareer={career} initialView="STATISTICS" />);
+    expect(html).toContain('手牌胜率');
+    expect(html).toContain('标准德州');
+    expect(html).toContain('短牌德州');
+    expect(html).toContain('AKs');
+    expect(html).toContain('50%');
+    expect(html).toContain('平分 1');
+  });
+
   it('renders table selection with five levels and the supported table sizes', () => {
     const html = renderToStaticMarkup(<App initialCareer={createCareer('测试玩家')} initialView="TABLE_SELECT" />);
     expect(html).toContain('标准德州');

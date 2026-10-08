@@ -12,6 +12,7 @@
     "test": "vitest run --exclude 'tests/simulation/continuousSimulation.test.ts' --exclude 'tests/release/**'",
     "test:ai": "vitest run tests/ai",
     "test:ai:experience": "vitest run tests/ai/experienceSimulation.test.ts tests/ai/experienceMetrics.test.ts",
+    "test:ai:river-full": "vite-node scripts/riverCallingMatrix.ts",
     "typecheck": "tsc -b --pretty false",
     "test:simulation": "npm run test:simulation:full",
     "test:simulation:full": "vitest run tests/simulation/continuousSimulation.test.ts",

@@ -1,0 +1,918 @@
+{
+  "seedBase": 539365384,
+  "seedScheme": "cellSeed = seedBase + cellIndex * 0x10001; dealSeed = cellSeed XOR 0x9e3779b9; decisionSeed = cellSeed XOR 0x243f6a88",
+  "totalHands": 100000,
+  "totalRiverOpportunities": 35895,
+  "rows": [
+    {
+      "mode": "STANDARD",
+      "difficulty": 1,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539365384,
+      "riverOpportunities": 1938,
+      "river": {
+        "AIR": {
+          "fold": 110,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 74,
+          "call": 235,
+          "allInCall": 6,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 0,
+          "call": 21,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 0,
+          "call": 289,
+          "allInCall": 10,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 0,
+          "call": 52,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 0,
+          "call": 47,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 0,
+          "call": 51,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 0,
+          "call": 17,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 0,
+          "call": 566,
+          "allInCall": 99,
+          "raise": 314,
+          "allInRaise": 42,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "bb4e9dc4"
+    },
+    {
+      "mode": "STANDARD",
+      "difficulty": 2,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539430921,
+      "riverOpportunities": 1923,
+      "river": {
+        "AIR": {
+          "fold": 105,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 107,
+          "call": 234,
+          "allInCall": 5,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 0,
+          "call": 23,
+          "allInCall": 2,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 0,
+          "call": 217,
+          "allInCall": 16,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 0,
+          "call": 66,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 0,
+          "call": 40,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 0,
+          "call": 35,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 0,
+          "call": 11,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 0,
+          "call": 624,
+          "allInCall": 94,
+          "raise": 294,
+          "allInRaise": 42,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "943c4a31"
+    },
+    {
+      "mode": "STANDARD",
+      "difficulty": 3,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539496458,
+      "riverOpportunities": 2778,
+      "river": {
+        "AIR": {
+          "fold": 415,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 159,
+          "call": 299,
+          "allInCall": 16,
+          "raise": 2,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 18,
+          "call": 17,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 52,
+          "call": 236,
+          "allInCall": 17,
+          "raise": 19,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 4,
+          "call": 94,
+          "allInCall": 11,
+          "raise": 24,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 3,
+          "call": 53,
+          "allInCall": 9,
+          "raise": 34,
+          "allInRaise": 4,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 2,
+          "call": 41,
+          "allInCall": 4,
+          "raise": 19,
+          "allInRaise": 5,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 1,
+          "call": 6,
+          "allInCall": 0,
+          "raise": 5,
+          "allInRaise": 1,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 22,
+          "call": 509,
+          "allInCall": 154,
+          "raise": 414,
+          "allInRaise": 109,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "5be5353d"
+    },
+    {
+      "mode": "STANDARD",
+      "difficulty": 4,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539561995,
+      "riverOpportunities": 3204,
+      "river": {
+        "AIR": {
+          "fold": 418,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 183,
+          "call": 375,
+          "allInCall": 26,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 27,
+          "call": 11,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 70,
+          "call": 285,
+          "allInCall": 11,
+          "raise": 2,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 8,
+          "call": 141,
+          "allInCall": 13,
+          "raise": 10,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 0,
+          "call": 53,
+          "allInCall": 11,
+          "raise": 38,
+          "allInRaise": 5,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 1,
+          "call": 53,
+          "allInCall": 12,
+          "raise": 26,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 0,
+          "call": 7,
+          "allInCall": 2,
+          "raise": 4,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 34,
+          "call": 583,
+          "allInCall": 177,
+          "raise": 473,
+          "allInRaise": 144,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "6c770327"
+    },
+    {
+      "mode": "STANDARD",
+      "difficulty": 5,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539627532,
+      "riverOpportunities": 3068,
+      "river": {
+        "AIR": {
+          "fold": 394,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 194,
+          "call": 291,
+          "allInCall": 21,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 14,
+          "call": 12,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 75,
+          "call": 315,
+          "allInCall": 18,
+          "raise": 1,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 7,
+          "call": 132,
+          "allInCall": 9,
+          "raise": 3,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 1,
+          "call": 79,
+          "allInCall": 9,
+          "raise": 28,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 2,
+          "call": 38,
+          "allInCall": 7,
+          "raise": 15,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 0,
+          "call": 6,
+          "allInCall": 5,
+          "raise": 1,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 34,
+          "call": 590,
+          "allInCall": 161,
+          "raise": 472,
+          "allInRaise": 134,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "01c17b5d"
+    },
+    {
+      "mode": "SHORT_DECK",
+      "difficulty": 1,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539693069,
+      "riverOpportunities": 5631,
+      "river": {
+        "AIR": {
+          "fold": 93,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 173,
+          "call": 309,
+          "allInCall": 20,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 9,
+          "call": 125,
+          "allInCall": 7,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 0,
+          "call": 363,
+          "allInCall": 31,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 0,
+          "call": 173,
+          "allInCall": 14,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 0,
+          "call": 94,
+          "allInCall": 8,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 0,
+          "call": 85,
+          "allInCall": 11,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 0,
+          "call": 16,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 0,
+          "call": 2241,
+          "allInCall": 547,
+          "raise": 1196,
+          "allInRaise": 113,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "846a55e6"
+    },
+    {
+      "mode": "SHORT_DECK",
+      "difficulty": 2,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539758606,
+      "riverOpportunities": 6292,
+      "river": {
+        "AIR": {
+          "fold": 99,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 177,
+          "call": 344,
+          "allInCall": 20,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 10,
+          "call": 139,
+          "allInCall": 16,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 1,
+          "call": 393,
+          "allInCall": 35,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 1,
+          "call": 221,
+          "allInCall": 23,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 0,
+          "call": 68,
+          "allInCall": 4,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 0,
+          "call": 92,
+          "allInCall": 17,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 0,
+          "call": 17,
+          "allInCall": 4,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 0,
+          "call": 2369,
+          "allInCall": 626,
+          "raise": 1474,
+          "allInRaise": 142,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "e5cdb65b"
+    },
+    {
+      "mode": "SHORT_DECK",
+      "difficulty": 3,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539824143,
+      "riverOpportunities": 3817,
+      "river": {
+        "AIR": {
+          "fold": 63,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 365,
+          "call": 20,
+          "allInCall": 2,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 57,
+          "call": 21,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 156,
+          "call": 78,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 61,
+          "call": 75,
+          "allInCall": 4,
+          "raise": 5,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 13,
+          "call": 32,
+          "allInCall": 4,
+          "raise": 6,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 28,
+          "call": 35,
+          "allInCall": 4,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 2,
+          "call": 10,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 364,
+          "call": 1089,
+          "allInCall": 272,
+          "raise": 833,
+          "allInRaise": 209,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "6f09b30c"
+    },
+    {
+      "mode": "SHORT_DECK",
+      "difficulty": 4,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539889680,
+      "riverOpportunities": 3630,
+      "river": {
+        "AIR": {
+          "fold": 57,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 349,
+          "call": 25,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 69,
+          "call": 20,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 183,
+          "call": 58,
+          "allInCall": 8,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 70,
+          "call": 67,
+          "allInCall": 8,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 15,
+          "call": 31,
+          "allInCall": 3,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 18,
+          "call": 25,
+          "allInCall": 7,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 5,
+          "call": 8,
+          "allInCall": 2,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 433,
+          "call": 1135,
+          "allInCall": 246,
+          "raise": 626,
+          "allInRaise": 158,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "3403e03e"
+    },
+    {
+      "mode": "SHORT_DECK",
+      "difficulty": 5,
+      "tableSize": 6,
+      "hands": 10000,
+      "seed": 539955217,
+      "riverOpportunities": 3614,
+      "river": {
+        "AIR": {
+          "fold": 58,
+          "call": 0,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_PAIR": {
+          "fold": 363,
+          "call": 13,
+          "allInCall": 0,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "BOARD_ONLY_HAND": {
+          "fold": 52,
+          "call": 16,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "WEAK_PAIR": {
+          "fold": 198,
+          "call": 33,
+          "allInCall": 1,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "MIDDLE_PAIR": {
+          "fold": 83,
+          "call": 49,
+          "allInCall": 5,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_WEAK_KICKER": {
+          "fold": 14,
+          "call": 28,
+          "allInCall": 3,
+          "raise": 3,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TOP_PAIR_GOOD_KICKER": {
+          "fold": 15,
+          "call": 32,
+          "allInCall": 7,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "OVERPAIR": {
+          "fold": 4,
+          "call": 3,
+          "allInCall": 2,
+          "raise": 0,
+          "allInRaise": 0,
+          "other": 0
+        },
+        "TWO_PAIR_PLUS": {
+          "fold": 429,
+          "call": 1133,
+          "allInCall": 252,
+          "raise": 670,
+          "allInRaise": 147,
+          "other": 0
+        }
+      },
+      "errors": {
+        "deadlocks": 0,
+        "illegalActions": 0,
+        "negativeChipStates": 0,
+        "unclaimedPots": 0,
+        "refundErrors": 0,
+        "chipConservationFailures": 0
+      },
+      "digest": "1bc04c42"
+    }
+  ]
+}

@@ -30,6 +30,10 @@ function cloneCareer(career: CareerState): CareerState {
     statistics: {
       overall: { ...career.statistics.overall },
       byMode: { STANDARD: { ...career.statistics.byMode.STANDARD }, SHORT_DECK: { ...career.statistics.byMode.SHORT_DECK } },
+      byStartingHand: {
+        STANDARD: Object.fromEntries(Object.entries(career.statistics.byStartingHand.STANDARD).map(([hand, stats]) => [hand, { ...stats }])),
+        SHORT_DECK: Object.fromEntries(Object.entries(career.statistics.byStartingHand.SHORT_DECK).map(([hand, stats]) => [hand, { ...stats }])),
+      },
       byPlayerCount: Object.fromEntries(Object.entries(career.statistics.byPlayerCount).map(([key, value]) => [key, { ...value }])) as CareerState['statistics']['byPlayerCount'],
       byLevel: Object.fromEntries(Object.entries(career.statistics.byLevel).map(([key, value]) => [key, { ...value }])) as CareerState['statistics']['byLevel'],
     },
@@ -217,7 +221,7 @@ export function recordHand(career: CareerState, summary: HandSummary): CareerSta
   if (!summary.handId) throw new Error('Hand id is required');
   if (career.recordedHandIds.includes(summary.handId)) return cloneCareer(career);
   const next = cloneCareer(career);
-  next.statistics = recordStatistics(next.statistics, summary);
+  if (summary.matchType !== 'MINI_TOURNAMENT') next.statistics = recordStatistics(next.statistics, summary);
   next.handHistory = appendHandHistory(next.handHistory, summary);
   next.recordedHandIds.push(summary.handId);
   return next;

@@ -2,6 +2,7 @@ import type { Card } from '../game/cards';
 import type { ActionRecord } from '../game/gameState';
 import type { GameMode } from '../game/rules';
 import type { TableLevelId } from './tableLevels';
+import type { MatchType } from '../match/matchTypes';
 
 export const HAND_HISTORY_LIMIT = 500;
 export type HandResult = 'WIN' | 'LOSS' | 'SPLIT' | 'FOLD';
@@ -13,6 +14,9 @@ export type PotReview = {
 
 export type HandSummary = {
   handId: string;
+  /** Absent from legacy cash histories. Tournament chips are never cash profit. */
+  matchType?: MatchType;
+  tournamentId?: string;
   timestamp: string;
   mode: GameMode;
   tableLevel: TableLevelId;

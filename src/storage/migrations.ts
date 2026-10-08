@@ -19,6 +19,7 @@ function normalizeCareer(input: Record<string, any>): CareerState {
   const savedStatistics = isObject(input.statistics) ? input.statistics : {};
   const savedOverall = isObject(savedStatistics.overall) ? savedStatistics.overall : {};
   const savedByMode = isObject(savedStatistics.byMode) ? savedStatistics.byMode : {};
+  const savedByStartingHand = isObject(savedStatistics.byStartingHand) ? savedStatistics.byStartingHand : {};
   const savedByPlayerCount = isObject(savedStatistics.byPlayerCount) ? savedStatistics.byPlayerCount : {};
   const savedByLevel = isObject(savedStatistics.byLevel) ? savedStatistics.byLevel : {};
   career.statistics = {
@@ -28,6 +29,10 @@ function normalizeCareer(input: Record<string, any>): CareerState {
     byMode: {
       STANDARD: { ...base.statistics.byMode.STANDARD, ...(isObject(savedByMode.STANDARD) ? savedByMode.STANDARD : {}) },
       SHORT_DECK: { ...base.statistics.byMode.SHORT_DECK, ...(isObject(savedByMode.SHORT_DECK) ? savedByMode.SHORT_DECK : {}) },
+    },
+    byStartingHand: {
+      STANDARD: normalizeStartingHandStats(savedByStartingHand.STANDARD),
+      SHORT_DECK: normalizeStartingHandStats(savedByStartingHand.SHORT_DECK),
     },
     byPlayerCount: Object.fromEntries(Object.entries(base.statistics.byPlayerCount).map(([key, segment]) => [
       key,
@@ -47,6 +52,15 @@ function normalizeCareer(input: Record<string, any>): CareerState {
   career.recordedHandIds = Array.isArray(input.recordedHandIds) ? [...input.recordedHandIds] : [];
   career.recordedTournamentIds = Array.isArray(input.recordedTournamentIds) ? [...input.recordedTournamentIds] : [];
   return career;
+}
+
+function normalizeStartingHandStats(value: unknown): CareerState['statistics']['byStartingHand']['STANDARD'] {
+  if (!isObject(value)) return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([notation, rawStats]) => {
+    if (!isObject(rawStats)) return [];
+    const counter = (field: string) => Number.isSafeInteger(rawStats[field]) && rawStats[field] >= 0 ? rawStats[field] : 0;
+    return [[notation, { hands: counter('hands'), wins: counter('wins'), splits: counter('splits'), losses: counter('losses') }]];
+  }));
 }
 export function migrateSave(data: unknown): VersionedSave {
   if (!isObject(data)) throw new Error('Invalid save data');

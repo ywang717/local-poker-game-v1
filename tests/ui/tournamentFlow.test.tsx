@@ -11,11 +11,13 @@ import { startTournament } from '../../src/tournament/tournamentEngine';
 import { GamePage } from '../../src/pages/Game/GamePage';
 import { createDeck } from '../../src/game/cards';
 import { createTable, startHand } from '../../src/game/gameEngine';
+import { settleGameState } from '../../src/game/handSettlement';
 import { App } from '../../src/App';
+import { HistoryPage } from '../../src/pages/History/HistoryPage';
 import { startTournamentHand } from '../../src/tournament/tournamentEngine';
-import { useCareerStore } from '../../src/store/careerStore';
+import { flushCareerPersistenceQueue, useCareerStore } from '../../src/store/careerStore';
 import { useGameStore } from '../../src/store/gameStore';
-import { resetStorageForTests, saveCareer, saveHandSnapshot } from '../../src/storage/saveSystem';
+import { loadCareer, loadHandSnapshot, resetStorageForTests, saveCareer, saveHandSnapshot } from '../../src/storage/saveSystem';
 import { CURRENT_SAVE_VERSION } from '../../src/types/persistence';
 
 const roots: Root[] = [];
@@ -76,7 +78,15 @@ describe('mini tournament flow UI', () => {
     expect(host.querySelector('[data-testid="cash-buy-in"]')).toBeNull();
     const settled = { ...useGameStore.getState().game!, street: 'SETTLEMENT' as const };
     await act(async () => useGameStore.getState().setGame(settled));
+    const handHistory = useCareerStore.getState().career?.handHistory;
+    expect(handHistory).toHaveLength(1);
+    expect(handHistory?.[0]).toMatchObject({ handId: settled.handId, matchType: 'MINI_TOURNAMENT' });
+    expect(useCareerStore.getState().career?.statistics.overall.totalHands).toBe(0);
+    expect(renderToStaticMarkup(<HistoryPage career={useCareerStore.getState().career!} />)).toContain('Mini 锦标赛');
+    await flushCareerPersistenceQueue();
+    expect((await loadCareer()).career?.handHistory).toHaveLength(1);
     await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="leave-table"]')?.click());
+    expect(useCareerStore.getState().career?.handHistory).toHaveLength(1);
     expect(useCareerStore.getState().career?.tournamentStatistics.tournamentsPlayed).toBe(1);
     expect(useCareerStore.getState().career?.tournamentStatistics.tournamentsWon).toBe(0);
     expect(useCareerStore.getState().career?.financialTransactions.filter((entry) => entry.kind === 'TOURNAMENT_CHAMPION_REWARD')).toHaveLength(0);
@@ -113,5 +123,29 @@ describe('mini tournament flow UI', () => {
     await act(async () => { await vi.waitFor(() => expect(host.textContent).toContain('存活 6 人')); });
     expect(host.textContent).toContain('盲注阶段');
     expect(useGameStore.getState().game?.tournamentState?.rewardPaid).toBe(true);
+  });
+
+  it('records a real tournament settlement before publishing the next hand', async () => {
+    const career = createCareer('玩家');
+    const tournament = startTournament({ tournamentId: 'real-history-flow', humanId: 'human' });
+    const hand = startTournamentHand(tournament, () => 0.5);
+    const settled = settleGameState({
+      ...hand,
+      street: 'SHOWDOWN',
+      actingSeat: null,
+      players: hand.players.map((player) => ({ ...player, folded: !player.isHuman })),
+    }).state;
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+    await act(async () => root.render(<App initialCareer={career} initialGame={settled} initialView="GAME" />));
+    expect(useCareerStore.getState().career?.handHistory[0]?.handId).toBe(settled.handId);
+    await act(async () => [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '继续下一手')?.click());
+    await act(async () => { await vi.waitFor(() => expect(useGameStore.getState().game?.handId).not.toBe(settled.handId)); });
+    const nextHandId = useGameStore.getState().game?.handId;
+    expect((await loadHandSnapshot())?.state.handId).toBe(nextHandId);
+    expect((await loadCareer()).career?.handHistory[0]?.handId).toBe(settled.handId);
+    expect(useCareerStore.getState().career?.statistics.overall.totalHands).toBe(0);
   });
 });
