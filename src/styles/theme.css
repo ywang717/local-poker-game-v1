@@ -53,6 +53,8 @@ h3 { margin-bottom: 14px; font-size: 15px; }
 .level-card span, .level-card small { color: #666666; font-size: 12px; }
 .game-page { min-height: calc(100vh - 72px); padding: 20px 32px calc(130px + env(safe-area-inset-bottom)); background: #F5F5F5; }
 .game-toolbar { display: flex; justify-content: space-between; max-width: 1200px; margin: 0 auto 14px; }
+.game-toolbar__left { display: flex; align-items: center; gap: 4px; }
+.hand-ranking-trigger { color: #246BCE; }
 .poker-table { max-width: 1200px; min-height: 540px; margin: 0 auto; padding: 24px; border: 1px solid #E5E5E5; border-radius: 16px; background: #FFFFFF; }
 .table-header { display: flex; justify-content: space-between; color: #666666; font-size: 13px; }
 .seat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
@@ -145,6 +147,16 @@ h3 { margin-bottom: 14px; font-size: 15px; }
 .cash-buy-in-status--error { color: #A33A3A; background: #FFF2F2; }
 .cash-buy-in-modal { width: min(460px, calc(100vw - 32px)); max-width: min(460px, calc(100vw - 32px)); }
 .cash-buy-in-modal button { min-height: 44px; }
+.hand-ranking-backdrop { position: fixed; inset: 0; z-index: 6; display: flex; align-items: flex-start; justify-content: flex-start; padding: 94px max(16px, calc((100vw - 1200px) / 2)); background: rgba(17,17,17,.18); }
+.hand-ranking-guide { width: min(390px, calc(100vw - 32px)); padding: 20px; border: 1px solid #E5E5E5; border-radius: 12px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(17,17,17,.12); }
+.hand-ranking-guide__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.hand-ranking-guide__header h3 { margin: 0; font-size: 22px; }
+.hand-ranking-list { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.hand-ranking-list li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 34px; padding: 6px 8px; border-radius: 8px; background: #FAFAFA; }
+.hand-ranking-list__rank { color: #246BCE; font-weight: 700; }
+.hand-ranking-list li > span:last-child { color: #666666; font-size: 12px; }
+.hand-ranking-guide__notes { margin-top: 16px; padding: 10px 12px; border-radius: 8px; color: #245D9C; background: #EEF4FC; font-size: 13px; line-height: 1.5; }
+.hand-ranking-guide__notes p { margin: 0; }
 
 @media (max-width: 1320px) {
   .app-header { padding: 0 24px; }
@@ -182,6 +194,10 @@ h3 { margin-bottom: 14px; font-size: 15px; }
   .game-page { min-height: calc(100dvh - 60px); padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); }
   .game-toolbar { align-items: center; margin-bottom: 10px; }
   .game-toolbar > div { display: flex; gap: 2px; }
+  .game-toolbar__left { min-width: 0; }
+  .game-toolbar__left > span { white-space: nowrap; }
+  .hand-ranking-guide { max-height: calc(100dvh - 110px); overflow-y: auto; }
+  .hand-ranking-backdrop { padding: 82px 12px 12px; }
   .poker-table { width: 100%; min-height: auto; padding: 12px; border-radius: 12px; }
   .table-header { flex-wrap: wrap; gap: 6px; }
   .seat-grid { grid-template-columns: 1fr; gap: 8px; margin-top: 16px; }

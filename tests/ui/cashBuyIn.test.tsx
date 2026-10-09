@@ -52,7 +52,7 @@ describe('cash buy-in table UI', () => {
   it('orders the cash toolbar as pause, buy-in, leave and hides buy-in for tournaments', async () => {
     const host = await mount();
     const labels = [...host.querySelectorAll('.game-toolbar button')].map((button) => button.textContent);
-    expect(labels).toEqual(['暂停', '买入', '离开牌桌']);
+    expect(labels).toEqual(['牌型大小', '暂停', '买入', '离开牌桌']);
 
     const tournament = { ...cashGame(), matchType: 'MINI_TOURNAMENT' as const };
     const tournamentHtml = renderToStaticMarkup(<GamePage game={tournament} matchType="MINI_TOURNAMENT" tableLevel={getTableLevel(1)} previousHand={null} paused={false} leaveRequested={false} canContinue={false} onContinue={() => undefined} onLeave={() => undefined} onPause={() => undefined} onAction={() => undefined} />);
