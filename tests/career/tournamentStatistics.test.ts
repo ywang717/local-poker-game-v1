@@ -25,7 +25,7 @@ describe('tournament career accounting', () => {
     const first = recordTournamentFinish(career, terminal);
     const second = recordTournamentFinish(first, terminal);
     expect(first.currentFunds).toBe(55_000);
-    expect(first.tournamentStatistics).toEqual({ tournamentsPlayed: 1, tournamentsWon: 1, totalEntryFees: 5_000, totalRewards: 50_000, totalNet: 45_000, bestFinish: 1 });
+    expect(first.tournamentStatistics).toMatchObject({ topThreeFinishes: 1, tournamentsPlayed: 1, tournamentsWon: 1, totalEntryFees: 5_000, totalRewards: 50_000, totalNet: 45_000, bestFinish: 1 });
     expect(second).toEqual(first);
     expect(first.financialTransactions.filter((entry) => entry.sessionId === 'career-t1')).toHaveLength(2);
   });

@@ -198,6 +198,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const game = storeGame ?? initialGame ?? null;
   const opponentModels = useMemo(() => buildPlayerModels(career?.handHistory ?? []), [career?.handHistory]);
   const [view, setView] = useState<AppView>(initialView ?? (game ? 'GAME' : career ? 'CAREER' : 'HOME'));
+  const [statisticsMatchType, setStatisticsMatchType] = useState<'CASH' | 'MINI_TOURNAMENT'>('CASH');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cashBuyInError, setCashBuyInError] = useState<string | null>(null);
   const [tournamentResult, setTournamentResult] = useState<TournamentState | null>(initialGame?.tournamentState ?? null);
@@ -220,7 +221,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     ]).then(([careerResult, snapshot]) => {
       if (!active) return;
       if (careerResult?.career) setCareer(careerResult.career);
-      if (careerResult?.status === 'corrupt') setLoadError(careerResult.error ?? '存档无法恢复');
+      if (careerResult?.error) setLoadError(careerResult.error);
       if (snapshot && !initialGame && !storeGame) {
         setGame(snapshot.state);
         setView('GAME');
@@ -261,7 +262,9 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
         try { forfeited = settleTournamentHand(forfeited, tableState); } catch { /* retain the last persisted tournament state */ }
       }
       if (forfeited) {
-        const result = forfeitTournament(forfeited);
+        const result = forfeited.players.length === 1
+          ? finishTournament(forfeited).state
+          : forfeitTournament(forfeited);
         if (currentCareer) recordTournamentFinish(result);
         setTournamentResult(result);
         setView('TOURNAMENT_RESULT');
@@ -440,7 +443,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const navigate = (next: AppView) => setView(next);
   let content: React.ReactNode;
   if (view === 'HOME') content = <HomePage career={career} loadError={loadError} onContinue={() => setView(career ? 'CAREER' : 'HOME')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
-  else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onEnterTournament={() => setView('TOURNAMENT_SELECT')} onNavigate={(next) => setView(next)} />;
+  else if (view === 'CAREER' && career) content = <CareerPage career={career} onEnterTable={() => setView('TABLE_SELECT')} onEnterTournament={() => setView('TOURNAMENT_SELECT')} onViewTournamentCareer={() => { setStatisticsMatchType('MINI_TOURNAMENT'); setView('STATISTICS'); }} onNavigate={(next) => { if (next === 'STATISTICS') setStatisticsMatchType('CASH'); setView(next); }} />;
   else if (view === 'TABLE_SELECT' && career) content = <TableSelectPage career={career} onEnter={enterTable} />;
   else if (view === 'TOURNAMENT_SELECT' && career) content = <TournamentSelectPage career={career} onEnter={enterMiniTournament} onBack={() => setView('CAREER')} />;
   else if (view === 'TOURNAMENT_RESULT' && tournamentResult) content = <TournamentResultPage tournament={tournamentResult} onDone={() => setView('CAREER')} />;
@@ -452,9 +455,9 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       : career?.handHistory[0] ?? null;
     content = <GamePage game={game} tournament={game.tournamentState} matchType={game.matchType ?? game.session?.matchType ?? 'CASH'} tableLevel={currentLevel} currentFunds={career?.currentFunds ?? 0} pendingCashBuyIn={activePending} onBuyIn={requestTableBuyIn} onCancelBuyIn={cancelTableBuyIn} onZeroStackRebuy={() => chooseZeroStack('REBUY')} onFastSimulate={fastSimulateTournament} onExitTournament={exitTournamentSpectator} opponentModels={opponentModels} previousHand={previousHand} paused={paused} leaveRequested={leaveRequested} canContinue={Boolean(game.street === 'SETTLEMENT' && ((game.matchType === 'MINI_TOURNAMENT') || game.players.find((player) => player.isHuman)?.stack || activePending))} onContinue={continueHand} onLeave={handleLeave} onPause={togglePause} onAction={(playerId, action: PlayerAction) => { dispatchAction(playerId, action); }} />;
   }
-  else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} />;
+  else if (view === 'STATISTICS' && career) content = <StatisticsPage career={career} initialMatchType={statisticsMatchType} />;
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
   else if (view === 'SETTINGS') content = <SettingsPage />;
   else content = <HomePage career={career} loadError={loadError} onContinue={() => setView('CAREER')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
-  return <div className="app-shell" style={{ '--color-bg': '#FFFFFF' } as React.CSSProperties}><header className="app-header"><button className="brand-button" disabled={Boolean(game)} onClick={() => navigate('HOME')}>本地德州扑克生涯</button><nav>{career && !game && <><button className="link-button" onClick={() => navigate('CAREER')}>生涯</button><button className="link-button" onClick={() => navigate('TABLE_SELECT')}>牌桌</button><button className="link-button" onClick={() => navigate('SETTINGS')}>设置</button></>}</nav></header>{cashBuyInError && game && <p className="cash-buy-in-status cash-buy-in-status--error" role="alert">{cashBuyInError}</p>}{content}</div>;
+  return <div className="app-shell" style={{ '--color-bg': '#FFFFFF' } as React.CSSProperties}><header className="app-header"><button className="brand-button" disabled={Boolean(game)} onClick={() => navigate('HOME')}>本地德州扑克生涯</button><nav>{career && !game && <><button className="link-button" onClick={() => navigate('CAREER')}>生涯</button><button className="link-button" onClick={() => navigate('TABLE_SELECT')}>牌桌</button><button className="link-button" onClick={() => navigate('SETTINGS')}>设置</button></>}</nav></header>{loadError && view !== 'HOME' && <p className="load-error" role="alert">{loadError}</p>}{cashBuyInError && game && <p className="cash-buy-in-status cash-buy-in-status--error" role="alert">{cashBuyInError}</p>}{content}</div>;
 }

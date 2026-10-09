@@ -229,3 +229,26 @@ h3 { margin-bottom: 14px; font-size: 15px; }
   .action-panel { gap: 6px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); }
   .action-panel > .button { min-height: 44px; }
 }
+
+/* Career statistics stay readable without widening the mobile page. */
+.tournament-coverage { margin-top: 16px; }
+.tournament-history { margin-top: 36px; }
+.tournament-history h3 { font-size: 20px; }
+.tournament-record-list { display: grid; gap: 12px; }
+.tournament-record { min-width: 0; padding: 16px; border: 1px solid #E5E5E5; border-radius: 12px; }
+.tournament-record-heading { display: flex; justify-content: space-between; gap: 12px; }
+.tournament-record-heading span, .tournament-record p, .tournament-record dt { color: #666666; font-size: 13px; }
+.tournament-record p { margin: 12px 0; line-height: 1.6; }
+.tournament-record dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.tournament-record dd { margin: 6px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .starting-hand-table { min-width: 0; display: block; }
+  .starting-hand-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .starting-hand-table tbody { display: block; }
+  .starting-hand-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 8px; border-bottom: 1px solid #E5E5E5; }
+  .starting-hand-table tbody tr:last-child { border-bottom: 0; }
+  .starting-hand-table tbody th { grid-column: 1 / -1; }
+  .starting-hand-table th, .starting-hand-table td { display: block; padding: 0; border: 0; }
+  .starting-hand-table td::before { content: attr(data-label); display: block; margin-bottom: 4px; color: #666666; font-size: 12px; font-weight: 400; }
+  .tournament-record-heading { flex-wrap: wrap; }
+}

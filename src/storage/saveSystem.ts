@@ -1,3 +1,4 @@
+import { initializeTournamentCareer, TOURNAMENT_HISTORY_LIMIT } from '../career/tournamentStatistics';
 import { HAND_HISTORY_LIMIT } from '../career/handHistory';
 import type { CareerState } from '../career/careerState';
 import { migrateHandSnapshot, migrateSave } from './migrations';
@@ -10,7 +11,7 @@ function clone<T>(value: T): T {
 }
 
 function historyTrimmed(career: CareerState): CareerState {
-  return { ...career, handHistory: career.handHistory.slice(0, HAND_HISTORY_LIMIT) };
+  return { ...career, handHistory: career.handHistory.slice(0, HAND_HISTORY_LIMIT), tournamentHistory: career.tournamentHistory.slice(0, TOURNAMENT_HISTORY_LIMIT) };
 }
 
 function careerRecord(career: CareerState): VersionedSave {
@@ -44,28 +45,47 @@ function parseCareerRecord(raw: unknown): CareerState {
 
 function historyFromRecord(raw: unknown): CareerState['handHistory'] | null {
   if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { entries?: unknown }).entries)) return null;
-  return clone((raw as { entries: CareerState['handHistory'] }).entries).slice(0, HAND_HISTORY_LIMIT);
+  return clone((raw as { entries: CareerState['handHistory'] }).entries);
 }
 
 export async function loadCareer(): Promise<LoadResult> {
   const current = await readRecord('career', 'current');
   const backup = await readRecord('career', 'backup');
   if (current === undefined && backup === undefined) return { status: 'empty', career: null, restoredFromBackup: false };
+  let career: CareerState;
+  let restoredFromBackup = false;
   try {
-    const career = parseCareerRecord(current);
+    career = parseCareerRecord(current);
     const history = historyFromRecord(await readRecord('handHistory', 'current'));
     if (history) career.handHistory = history;
-    return { status: 'loaded', career, restoredFromBackup: false };
   } catch (currentError) {
     try {
-      const career = parseCareerRecord(backup);
+      career = parseCareerRecord(backup);
       const history = historyFromRecord(await readRecord('handHistory', 'backup'));
       if (history) career.handHistory = history;
-      return { status: 'recovered', career, restoredFromBackup: true };
+      restoredFromBackup = true;
     } catch (backupError) {
       return { status: 'corrupt', career: null, restoredFromBackup: false, error: `存档无法恢复: ${String((backupError as Error)?.message ?? currentError)}` };
     }
   }
+  const initialized = initializeTournamentCareer(career);
+  const loadedCareer = historyTrimmed(initialized);
+  let migrationError: string | undefined;
+  if (initialized !== career) {
+    // Save the migration marker and counters together. Preserve the valid backup
+    // rather than rotating a possibly corrupt current record into its place.
+    try {
+      await writeRecords([
+        { storeName: 'career', key: 'current', value: careerRecord(loadedCareer) },
+        { storeName: 'handHistory', key: 'current', value: { entries: loadedCareer.handHistory } },
+      ]);
+    } catch {
+      // Keep the readable save available; a later normal save will include the
+      // marker, or reload will retry from the unchanged legacy data.
+      migrationError = '锦标赛统计更新暂未保存，请检查浏览器存储空间；原生涯仍可继续。';
+    }
+  }
+  return { status: restoredFromBackup ? 'recovered' : 'loaded', career: loadedCareer, restoredFromBackup, ...(migrationError ? { error: migrationError } : {}) };
 }
 
 export async function saveHandSnapshot(snapshot: HandSnapshot): Promise<void> {

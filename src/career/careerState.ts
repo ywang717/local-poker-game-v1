@@ -4,7 +4,7 @@ import type { HandSummary } from './handHistory';
 import type { CareerStatistics } from './statistics';
 import type { TableLevelId } from './tableLevels';
 import type { FinancialTransaction, PendingCashBuyIn } from './transactionTypes';
-import type { TournamentStatistics } from './tournamentStatistics';
+import type { TournamentRecord, TournamentStatistics } from './tournamentStatistics';
 
 export type CareerState = {
   saveVersion: number;
@@ -26,6 +26,7 @@ export type CareerState = {
   financialTransactions: FinancialTransaction[];
   pendingCashBuyIns: PendingCashBuyIn[];
   tournamentStatistics: TournamentStatistics;
+  tournamentHistory: TournamentRecord[];
   /** Tournament IDs whose final result has already been recorded. */
   recordedTournamentIds: string[];
 };

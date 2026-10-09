@@ -1,10 +1,10 @@
 import type { GameMode } from '../game/rules';
 import type { TableSize } from '../game/gameState';
 import { appendHandHistory, type HandSummary } from './handHistory';
-import { createEmptyStatistics, recordStatistics } from './statistics';
+import { applyStartingHand, createEmptyStatistics, recordStatistics } from './statistics';
 import { getTableLevel, TABLE_LEVELS, type TableLevel, type TableLevelId } from './tableLevels';
 import type { CareerState } from './careerState';
-import { createEmptyTournamentStatistics } from './tournamentStatistics';
+import { createEmptyTournamentStatistics, TOURNAMENT_HISTORY_LIMIT } from './tournamentStatistics';
 import { syncActiveTableStack as syncCashTableStack } from './cashBuyInService';
 import { startTournament } from '../tournament/tournamentEngine';
 import type { TournamentState } from '../tournament/types';
@@ -41,7 +41,8 @@ function cloneCareer(career: CareerState): CareerState {
     recordedHandIds: [...career.recordedHandIds],
     financialTransactions: (career.financialTransactions ?? []).map((entry) => ({ ...entry })),
     pendingCashBuyIns: (career.pendingCashBuyIns ?? []).map((entry) => ({ ...entry })),
-    tournamentStatistics: { ...(career.tournamentStatistics ?? createEmptyTournamentStatistics()) },
+    tournamentStatistics: structuredClone(career.tournamentStatistics ?? createEmptyTournamentStatistics()),
+    tournamentHistory: (career.tournamentHistory ?? []).map((entry) => ({ ...entry })),
     recordedTournamentIds: [...(career.recordedTournamentIds ?? [])],
   };
 }
@@ -80,7 +81,8 @@ export function createCareer(nickname: string): CareerState {
     recordedHandIds: [],
     financialTransactions: [],
     pendingCashBuyIns: [],
-    tournamentStatistics: createEmptyTournamentStatistics(),
+    tournamentStatistics: createEmptyTournamentStatistics(createdAt),
+    tournamentHistory: [],
     recordedTournamentIds: [],
   };
 }
@@ -143,10 +145,22 @@ export function recordTournamentFinish(career: CareerState, state: TournamentSta
   const stats = next.tournamentStatistics;
   stats.tournamentsPlayed += 1;
   stats.tournamentsWon += isChampion ? 1 : 0;
+  stats.topThreeFinishes += humanRank <= 3 ? 1 : 0;
   stats.totalEntryFees += state.entryFee;
   stats.totalRewards += reward;
   stats.totalNet += reward - state.entryFee;
   stats.bestFinish = stats.bestFinish === null ? humanRank : Math.min(stats.bestFinish, humanRank);
+  const finishedAt = new Date().toISOString();
+  const startedAt = next.financialTransactions.find((entry) => entry.transactionId === entryTransactionId)?.createdAt ?? finishedAt;
+  const championName = state.championId
+    ? state.players.find((player) => player.id === state.championId)?.name
+      ?? state.eliminations.find((entry) => entry.playerId === state.championId)?.playerName
+    : undefined;
+  next.tournamentHistory = [{
+    tournamentId: state.tournamentId, mode: state.mode, tableLevel: state.tableLevel,
+    startedAt, finishedAt, humanRank, entryFee: state.entryFee, reward, net: reward - state.entryFee,
+    status: state.championId ? 'COMPLETED' as const : 'EXITED' as const, championName,
+  }, ...next.tournamentHistory].slice(0, TOURNAMENT_HISTORY_LIMIT);
   next.recordedTournamentIds.push(state.tournamentId);
   // Tournament entry fees are paid before the match starts.  If the player
   // loses with no cash left, use the same minimum-funds protection as a cash
@@ -221,7 +235,10 @@ export function recordHand(career: CareerState, summary: HandSummary): CareerSta
   if (!summary.handId) throw new Error('Hand id is required');
   if (career.recordedHandIds.includes(summary.handId)) return cloneCareer(career);
   const next = cloneCareer(career);
-  if (summary.matchType !== 'MINI_TOURNAMENT') next.statistics = recordStatistics(next.statistics, summary);
+  if (summary.matchType === 'MINI_TOURNAMENT') {
+    const startingHands = next.tournamentStatistics.byStartingHand;
+    startingHands[summary.mode] = applyStartingHand(startingHands[summary.mode], summary);
+  } else next.statistics = recordStatistics(next.statistics, summary);
   next.handHistory = appendHandHistory(next.handHistory, summary);
   next.recordedHandIds.push(summary.handId);
   return next;

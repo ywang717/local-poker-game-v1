@@ -59,7 +59,7 @@ function startingHandNotation(cards: readonly Card[], mode: GameMode): string | 
   return `${rankLabel(high)}${rankLabel(low)}${cards[0].suit === cards[1].suit ? 's' : 'o'}`;
 }
 
-function applyStartingHand(stats: Record<string, StartingHandStats>, summary: HandSummary): Record<string, StartingHandStats> {
+export function applyStartingHand(stats: Record<string, StartingHandStats>, summary: HandSummary): Record<string, StartingHandStats> {
   const notation = startingHandNotation(summary.playerHoleCards, summary.mode);
   if (!notation) return { ...stats };
   const previous = stats[notation] ?? { hands: 0, wins: 0, splits: 0, losses: 0 };

@@ -1,6 +1,6 @@
 import { createCareer } from '../career/careerService';
 import type { CareerState } from '../career/careerState';
-import { createEmptyTournamentStatistics } from '../career/tournamentStatistics';
+import { createEmptyTournamentStatistics, TOURNAMENT_HISTORY_LIMIT } from '../career/tournamentStatistics';
 import { CURRENT_SAVE_VERSION, type HandSnapshot, type VersionedSave } from '../types/persistence';
 import type { GameState } from '../game/gameState';
 import { getTableLevel, type TableLevelId } from '../career/tableLevels';
@@ -47,7 +47,19 @@ function normalizeCareer(input: Record<string, any>): CareerState {
   career.activeTableSessionId = typeof input.activeTableSessionId === 'string' && input.activeTableSessionId ? input.activeTableSessionId : (career.activeTableSessionId ?? null);
   career.financialTransactions = Array.isArray(input.financialTransactions) ? structuredClone(input.financialTransactions) : [];
   career.pendingCashBuyIns = Array.isArray(input.pendingCashBuyIns) ? structuredClone(input.pendingCashBuyIns) : [];
-  career.tournamentStatistics = isObject(input.tournamentStatistics) ? { ...createEmptyTournamentStatistics(), ...structuredClone(input.tournamentStatistics) } : createEmptyTournamentStatistics();
+  const savedTournament = isObject(input.tournamentStatistics) ? input.tournamentStatistics : {};
+  const savedTournamentHands = isObject(savedTournament.byStartingHand) ? savedTournament.byStartingHand : {};
+  career.tournamentStatistics = {
+    ...createEmptyTournamentStatistics(), ...structuredClone(savedTournament),
+    byStartingHand: {
+      STANDARD: normalizeStartingHandStats(savedTournamentHands.STANDARD),
+      SHORT_DECK: normalizeStartingHandStats(savedTournamentHands.SHORT_DECK),
+    },
+    topThreeFinishes: Number.isSafeInteger(savedTournament.topThreeFinishes) && savedTournament.topThreeFinishes >= 0 ? savedTournament.topThreeFinishes : 0,
+    trackingStartedAt: typeof savedTournament.trackingStartedAt === 'string' ? savedTournament.trackingStartedAt : '',
+    startingHandMigrationVersion: savedTournament.startingHandMigrationVersion === 1 ? 1 : 0,
+  };
+  career.tournamentHistory = Array.isArray(input.tournamentHistory) ? structuredClone(input.tournamentHistory).slice(0, TOURNAMENT_HISTORY_LIMIT) : [];
   career.handHistory = Array.isArray(input.handHistory) ? structuredClone(input.handHistory).map((entry: any) => ({ ...entry, potResults: entry.potResults ?? [] })) : [];
   career.recordedHandIds = Array.isArray(input.recordedHandIds) ? [...input.recordedHandIds] : [];
   career.recordedTournamentIds = Array.isArray(input.recordedTournamentIds) ? [...input.recordedTournamentIds] : [];
@@ -81,6 +93,8 @@ export function migrateSave(data: unknown): VersionedSave {
     unlockedLevels: Array.isArray(data.unlockedLevels) ? data.unlockedLevels.filter((level: unknown): level is 1 | 2 | 3 | 4 | 5 => [1, 2, 3, 4, 5].includes(level as number)) : [1],
     handHistory: Array.isArray(data.handHistory) ? structuredClone(data.handHistory).map((entry: any) => ({ ...entry, potResults: entry.potResults ?? [] })) : [],
   };
+  career.tournamentStatistics.startingHandMigrationVersion = 0;
+  career.tournamentStatistics.trackingStartedAt = '';
   return { saveVersion: CURRENT_SAVE_VERSION, career };
 }
 
