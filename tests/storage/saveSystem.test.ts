@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createDeck } from '../../src/game/cards';
 import { createTable, startHand } from '../../src/game/gameEngine';
 import { createCareer } from '../../src/career/careerService';
+import { HAND_HISTORY_LIMIT } from '../../src/career/handHistory';
 import { saveCareer, loadCareer, saveHandSnapshot, loadHandSnapshot, resetStorageForTests, putRawRecord } from '../../src/storage/saveSystem';
 import type { HandSnapshot } from '../../src/types/persistence';
 
@@ -65,9 +66,9 @@ describe('IndexedDB save system', () => {
     expect(loaded?.state.matchType).toBe('CASH');
   });
 
-  it('trims saved history to the latest 500 entries', async () => {
+  it('trims saved history to the latest 10000 entries', async () => {
     const career = createCareer('历史玩家');
-    career.handHistory = Array.from({ length: 510 }, (_, index) => ({
+    career.handHistory = Array.from({ length: HAND_HISTORY_LIMIT + 10 }, (_, index) => ({
       handId: `h-${index}`,
       timestamp: '2026-09-30T00:00:00.000Z',
       mode: 'STANDARD' as const,
@@ -87,8 +88,8 @@ describe('IndexedDB save system', () => {
     }));
     await saveCareer(career);
     const loaded = await loadCareer();
-    expect(loaded.career?.handHistory).toHaveLength(500);
+    expect(loaded.career?.handHistory).toHaveLength(HAND_HISTORY_LIMIT);
     expect(loaded.career?.handHistory[0].handId).toBe('h-0');
-    expect(loaded.career?.handHistory.at(-1)?.handId).toBe('h-499');
+    expect(loaded.career?.handHistory.at(-1)?.handId).toBe(`h-${HAND_HISTORY_LIMIT - 1}`);
   });
 });

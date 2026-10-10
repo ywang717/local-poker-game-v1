@@ -12,10 +12,10 @@ function hand(id: string): HandSummary {
 }
 
 describe('long-term hand stats persistence', () => {
-  it('keeps compact facts beyond the 500-hand history boundary and reloads them', async () => {
+  it('keeps compact facts beyond the full-history boundary and reloads them', async () => {
     let career = createCareer('统计玩家');
     for (let index = 0; index < 505; index += 1) career = recordHand(career, hand(`h-${index}`));
-    expect(career.handHistory).toHaveLength(500);
+    expect(career.handHistory).toHaveLength(505);
     expect(career.handStats).toHaveLength(505);
     await saveCareer(career);
     const loaded = await loadCareer();

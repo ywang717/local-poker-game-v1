@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createCareer, enterTournament, recordHand, recordTournamentFinish } from '../../src/career/careerService';
 import { createCard } from '../../src/game/cards';
-import type { HandSummary } from '../../src/career/handHistory';
+import { HAND_HISTORY_LIMIT, type HandSummary } from '../../src/career/handHistory';
 import { forfeitTournament } from '../../src/tournament/tournamentSettlement';
 
 import { tournamentSummary } from '../helpers/tournamentSummary';
@@ -31,10 +31,10 @@ describe('tournament career', () => {
     expect(career.tournamentStatistics.byStartingHand.STANDARD.ATo).toBeUndefined();
   });
 
-  it('keeps lifetime hand counts after the last-500 history window has rolled over', () => {
+  it('keeps lifetime hand counts alongside the full-history window', () => {
     let career = createCareer('玩家');
     for (let i = 0; i < 505; i++) career = recordHand(career, tournamentSummary(`many-${i}`));
-    expect(career.handHistory).toHaveLength(500);
+    expect(career.handHistory).toHaveLength(Math.min(505, HAND_HISTORY_LIMIT));
     expect(career.tournamentStatistics.byStartingHand.STANDARD.AA.hands).toBe(505);
     expect(recordHand(career, tournamentSummary('many-0')).tournamentStatistics.byStartingHand.STANDARD.AA.hands).toBe(505);
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createCareer, recordHand } from '../../src/career/careerService';
-import type { HandSummary } from '../../src/career/handHistory';
+import { appendHandHistory, HAND_HISTORY_LIMIT, type HandSummary } from '../../src/career/handHistory';
 
 function summary(index: number, overrides: Partial<HandSummary> = {}): HandSummary {
   return {
@@ -97,16 +97,20 @@ describe('career statistics and hand history', () => {
     expect(career.statistics.byStartingHand.SHORT_DECK).toEqual({});
   });
 
-  it('applies a hand id only once and keeps the newest 500 history entries', () => {
+  it('applies a hand id only once and keeps the newest history entries', () => {
     let career = createCareer('玩家');
     career = recordHand(career, summary(1));
     career = recordHand(career, summary(1, { playerNet: 9_999 }));
     expect(career.statistics.overall.totalHands).toBe(1);
     expect(career.handHistory[0].playerNet).toBe(-100);
     for (let index = 2; index <= 501; index += 1) career = recordHand(career, summary(index));
-    expect(career.handHistory).toHaveLength(500);
+    expect(career.handHistory).toHaveLength(501);
     expect(career.handHistory[0].handId).toBe('hand-501');
-    expect(career.handHistory.at(-1)?.handId).toBe('hand-2');
+    expect(career.handHistory.at(-1)?.handId).toBe('hand-1');
+    const fullHistory = Array.from({ length: HAND_HISTORY_LIMIT }, (_, index) => summary(index));
+    const appended = appendHandHistory(fullHistory, summary(HAND_HISTORY_LIMIT));
+    expect(appended).toHaveLength(HAND_HISTORY_LIMIT);
+    expect(appended[0].handId).toBe(`hand-${HAND_HISTORY_LIMIT}`);
   });
 
   it('preserves per-pot winners and awards for the previous-hand review', () => {

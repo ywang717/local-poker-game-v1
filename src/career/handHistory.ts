@@ -4,7 +4,8 @@ import type { GameMode } from '../game/rules';
 import type { TableLevelId } from './tableLevels';
 import type { MatchType } from '../match/matchTypes';
 
-export const HAND_HISTORY_LIMIT = 500;
+/** Full hand reviews are retained separately from compact lifetime statistics. */
+export const HAND_HISTORY_LIMIT = 10_000;
 export type HandResult = 'WIN' | 'LOSS' | 'SPLIT' | 'FOLD' | 'PARTIAL_WIN';
 export type PotReview = {
   amount: number;
