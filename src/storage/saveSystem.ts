@@ -5,6 +5,7 @@ import { migrateHandSnapshot, migrateSave } from './migrations';
 import { deleteDatabase, readRecord, writeRecords, type StoreName } from './database';
 import { CURRENT_SAVE_VERSION, type HandSnapshot, type LoadResult, type VersionedSave } from '../types/persistence';
 import type { SettingsState } from '../store/settingsStore';
+import { createHandStatsFact, mergeHandStatsFacts } from '../career/handStats';
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -66,6 +67,14 @@ function handStatsFromRecord(raw: unknown, careerId: string): NonNullable<Career
   return clone(record.entries) as NonNullable<CareerState['handStats']>;
 }
 
+function ensureHandStatsFromHistory(career: CareerState): void {
+  if ((career.handStats ?? []).length > 0 || career.handHistory.length === 0) return;
+  career.handStats = career.handHistory.reduce<NonNullable<CareerState['handStats']>>((facts, summary) => {
+    const fact = createHandStatsFact(summary, career.careerId ?? career.createdAt);
+    return fact ? mergeHandStatsFacts(facts, fact) : facts;
+  }, []);
+}
+
 export async function loadCareer(): Promise<LoadResult> {
   const current = await readRecord('career', 'current');
   const backup = await readRecord('career', 'backup');
@@ -78,6 +87,7 @@ export async function loadCareer(): Promise<LoadResult> {
     if (history) career.handHistory = history;
     const facts = handStatsFromRecord(await readRecord('handStats', 'current'), career.careerId ?? career.createdAt);
     if (facts && (facts.length > 0 || career.handHistory.length === 0)) career.handStats = facts;
+    ensureHandStatsFromHistory(career);
   } catch (currentError) {
     try {
       career = parseCareerRecord(backup);
@@ -85,6 +95,7 @@ export async function loadCareer(): Promise<LoadResult> {
       if (history) career.handHistory = history;
       const facts = handStatsFromRecord(await readRecord('handStats', 'backup'), career.careerId ?? career.createdAt);
       if (facts && (facts.length > 0 || career.handHistory.length === 0)) career.handStats = facts;
+      ensureHandStatsFromHistory(career);
       restoredFromBackup = true;
     } catch (backupError) {
       return { status: 'corrupt', career: null, restoredFromBackup: false, error: `存档无法恢复: ${String((backupError as Error)?.message ?? currentError)}` };
