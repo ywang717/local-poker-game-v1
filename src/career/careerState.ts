@@ -5,11 +5,14 @@ import type { CareerStatistics } from './statistics';
 import type { TableLevelId } from './tableLevels';
 import type { FinancialTransaction, PendingCashBuyIn } from './transactionTypes';
 import type { TournamentRecord, TournamentStatistics } from './tournamentStatistics';
+import type { HandStatsFact } from './handStats';
 
 export type CareerState = {
   saveVersion: number;
   nickname: string;
   createdAt: string;
+  /** Stable identifier used to namespace long-term hand-stat facts. */
+  careerId?: string;
   currentFunds: number;
   peakFunds: number;
   lowestFunds: number;
@@ -22,6 +25,8 @@ export type CareerState = {
   bankruptcyCount: number;
   statistics: CareerStatistics;
   handHistory: HandSummary[];
+  /** Compact long-term facts; full hand snapshots remain limited to handHistory. */
+  handStats?: HandStatsFact[];
   recordedHandIds: string[];
   financialTransactions: FinancialTransaction[];
   pendingCashBuyIns: PendingCashBuyIn[];

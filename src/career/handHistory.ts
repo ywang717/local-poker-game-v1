@@ -5,9 +5,10 @@ import type { TableLevelId } from './tableLevels';
 import type { MatchType } from '../match/matchTypes';
 
 export const HAND_HISTORY_LIMIT = 500;
-export type HandResult = 'WIN' | 'LOSS' | 'SPLIT' | 'FOLD';
+export type HandResult = 'WIN' | 'LOSS' | 'SPLIT' | 'FOLD' | 'PARTIAL_WIN';
 export type PotReview = {
   amount: number;
+  eligiblePlayerIds?: string[];
   winnerPlayerIds: string[];
   awards: { playerId: string; amount: number }[];
 };
@@ -25,6 +26,12 @@ export type HandSummary = {
   bigBlind: number;
   dealerSeat: number;
   playerHoleCards: Card[];
+  /** The human player ID used in action/pot records; legacy summaries default to human. */
+  playerId?: string;
+  playerSeat?: number;
+  playerPosition?: import('../ai/positionStrategy').DetailedPosition;
+  initialPlayerStack?: number;
+  effectiveStackBB?: number;
   communityCards: Card[];
   finalCategory: string | null;
   finalPot: number;
@@ -40,6 +47,16 @@ export type HandSummary = {
   vpip?: boolean;
   pfr?: boolean;
   threeBet?: boolean;
+  threeBetOpportunity?: boolean;
+  fourBet?: boolean;
+  fourBetOpportunity?: boolean;
+  foldPreflop?: boolean;
+  allInCall?: boolean;
+  sawFlop?: boolean;
+  sawTurn?: boolean;
+  sawRiver?: boolean;
+  trueShowdown?: boolean;
+  wonWithoutShowdown?: boolean;
 };
 
 export function appendHandHistory(history: readonly HandSummary[], entry: HandSummary): HandSummary[] {
@@ -49,6 +66,6 @@ export function appendHandHistory(history: readonly HandSummary[], entry: HandSu
     communityCards: [...entry.communityCards],
     actionHistory: entry.actionHistory.map((record) => ({ ...record })),
     playerNames: entry.playerNames ? { ...entry.playerNames } : undefined,
-    potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
+    potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, eligiblePlayerIds: pot.eligiblePlayerIds ? [...pot.eligiblePlayerIds] : undefined, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
   }, ...history].slice(0, HAND_HISTORY_LIMIT);
 }

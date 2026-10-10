@@ -75,6 +75,7 @@ export function createTable(config: TableConfig): GameState {
     bigBlind: config.bigBlind,
     dealerSeat,
     initialOccupiedSeats: players.map((player) => player.seat),
+    handStartStacks: {},
     smallBlindSeat: null,
     bigBlindSeat: null,
     street: 'PRE_FLOP',
@@ -117,6 +118,8 @@ export function startHand(state: GameState, deck: readonly ReturnType<typeof cre
   const next: GameState = {
     ...state,
     handId: handIdFor(state),
+    handStartedAt: new Date().toISOString(),
+    handStartStacks: Object.fromEntries(state.players.map(player => [player.id, player.stack])),
     handNumber: state.handNumber + 1,
     street: 'PRE_FLOP',
     deck: [...deck],

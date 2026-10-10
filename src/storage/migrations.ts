@@ -7,6 +7,7 @@ import { getTableLevel, type TableLevelId } from '../career/tableLevels';
 import type { MatchType } from '../match/matchTypes';
 import { personalityForAiIndex } from '../ai/personalities';
 import { selectAiNamesForKey } from '../ai/names';
+import { createHandStatsFact, mergeHandStatsFacts, type HandStatsFact } from '../career/handStats';
 
 function isObject(value: unknown): value is Record<string, any> { return typeof value === 'object' && value !== null; }
 function levelForBigBlind(bigBlind: unknown): TableLevelId {
@@ -16,6 +17,7 @@ function levelForBigBlind(bigBlind: unknown): TableLevelId {
 function normalizeCareer(input: Record<string, any>): CareerState {
   const base = createCareer(typeof input.nickname === 'string' && input.nickname.trim() ? input.nickname : '玩家');
   const career = { ...base, ...structuredClone(input) } as CareerState;
+  career.careerId = typeof input.careerId === 'string' && input.careerId ? input.careerId : career.createdAt;
   const savedStatistics = isObject(input.statistics) ? input.statistics : {};
   const savedOverall = isObject(savedStatistics.overall) ? savedStatistics.overall : {};
   const savedByMode = isObject(savedStatistics.byMode) ? savedStatistics.byMode : {};
@@ -61,6 +63,13 @@ function normalizeCareer(input: Record<string, any>): CareerState {
   };
   career.tournamentHistory = Array.isArray(input.tournamentHistory) ? structuredClone(input.tournamentHistory).slice(0, TOURNAMENT_HISTORY_LIMIT) : [];
   career.handHistory = Array.isArray(input.handHistory) ? structuredClone(input.handHistory).map((entry: any) => ({ ...entry, potResults: entry.potResults ?? [] })) : [];
+  const savedHandStats = Array.isArray(input.handStats) ? structuredClone(input.handStats) as HandStatsFact[] : [];
+  career.handStats = savedHandStats.length
+    ? savedHandStats.filter((fact) => isObject(fact) && typeof fact.factKey === 'string')
+    : career.handHistory.reduce<HandStatsFact[]>((facts, summary) => {
+      const fact = createHandStatsFact(summary, career.careerId ?? career.createdAt);
+      return fact ? mergeHandStatsFacts(facts, fact) : facts;
+    }, []);
   career.recordedHandIds = Array.isArray(input.recordedHandIds) ? [...input.recordedHandIds] : [];
   career.recordedTournamentIds = Array.isArray(input.recordedTournamentIds) ? [...input.recordedTournamentIds] : [];
   return career;

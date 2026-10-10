@@ -34,6 +34,7 @@ import { startTournamentHand, settleTournamentHand } from './tournament/tourname
 import { finishTournament, forfeitTournament } from './tournament/tournamentSettlement';
 import { fastSimulateTournamentToEnd } from './tournament/fastSimulation';
 import type { TournamentState } from './tournament/types';
+import { positionInfoFor } from './ai/positionStrategy';
 
 export type AppView = 'HOME' | 'CAREER' | 'TABLE_SELECT' | 'TOURNAMENT_SELECT' | 'TOURNAMENT_RESULT' | 'GAME' | 'STATISTICS' | 'HISTORY' | 'SETTINGS';
 
@@ -141,6 +142,27 @@ export function handSummary(state: GameState): HandSummary | null {
     && (record.action === 'call' || record.action === 'bet-to' || record.action === 'raise-to' || record.action === 'all-in'));
   const winnerPots = state.pots.filter((pot) => pot.winnerPlayerIds.includes(human.id));
   const hasSplitPot = winnerPots.some((pot) => pot.winnerPlayerIds.length > 1);
+  const eligiblePots = state.pots.filter((pot) => pot.eligiblePlayerIds.includes(human.id));
+  const wonAllEligiblePots = eligiblePots.length > 0 && eligiblePots.every((pot) => pot.winnerPlayerIds.length === 1 && pot.winnerPlayerIds[0] === human.id);
+  const livePlayers = state.players.filter((player) => !player.folded);
+  const trueShowdown = !human.folded && state.communityCards.length >= 5 && livePlayers.length >= 2;
+  const wonWithoutShowdown = playerAward > 0 && livePlayers.length < 2;
+  const foldAction = state.actionHistory.find((record) => record.playerId === human.id && record.action === 'fold');
+  const streetRank = { PRE_FLOP: 0, FLOP: 1, TURN: 2, RIVER: 3 } as const;
+  const sawStreet = (street: keyof typeof streetRank, requiredBoardCards: number) => state.communityCards.length >= requiredBoardCards && (!foldAction || streetRank[foldAction.street] >= streetRank[street]);
+  const preflopActions = state.actionHistory.filter((record) => record.playerId === human.id && record.street === 'PRE_FLOP' && !record.isBlind);
+  const fullRaisesBefore = (record: typeof state.actionHistory[number]) => state.actionHistory.slice(0, state.actionHistory.indexOf(record)).filter((entry) => entry.street === 'PRE_FLOP' && !entry.isBlind && entry.isAggressiveRaise && entry.isFullRaise).length;
+  const pfrRecord = preflopActions.find(record => record.isAggressiveRaise);
+  const threeBetRecord = preflopActions.find((record) => record.isAggressiveRaise && record.isFullRaise && fullRaisesBefore(record) === 1);
+  const fourBetRecord = preflopActions.find((record) => record.isAggressiveRaise && record.isFullRaise && fullRaisesBefore(record) === 2);
+  const info = positionInfoFor(state, human.id);
+  const position = info.detailedPosition === 'HEADS_UP' ? (info.isSmallBlind ? 'SB' : 'BB') : info.detailedPosition;
+  const initialPlayerStack = state.handStartStacks?.[human.id];
+  const opponentStartingStacks = state.players.filter(player => player.id !== human.id).map(player => state.handStartStacks?.[player.id]);
+  const knownStacks = initialPlayerStack !== undefined && opponentStartingStacks.every(stack => stack !== undefined);
+  const effectiveStackBB = knownStacks && opponentStartingStacks.length > 0 && state.bigBlind > 0
+    ? Math.min(initialPlayerStack!, Math.max(...opponentStartingStacks as number[])) / state.bigBlind
+    : undefined;
   const evaluation = !human.folded && state.communityCards.length >= 5
     ? evaluateHand(human.holeCards, state.communityCards, state.mode)
     : null;
@@ -148,7 +170,7 @@ export function handSummary(state: GameState): HandSummary | null {
     handId: state.handId,
     matchType,
     tournamentId: matchType === 'MINI_TOURNAMENT' ? state.tournamentState?.tournamentId ?? state.sessionId : undefined,
-    timestamp: new Date().toISOString(),
+    timestamp: state.handStartedAt ?? new Date().toISOString(),
     mode: state.mode,
     tableLevel: state.tableLevel ?? getTableLevel(levelForBigBlind(state.bigBlind)).id,
     tableSize: state.tableSize,
@@ -161,13 +183,30 @@ export function handSummary(state: GameState): HandSummary | null {
     finalPot: state.pots.reduce((sum, pot) => sum + pot.amount, 0),
     playerContribution: human.handContribution,
     playerNet: playerAward + playerRefund - human.handContribution,
-    result: human.folded ? 'FOLD' : playerAward === 0 ? 'LOSS' : hasSplitPot ? 'SPLIT' : 'WIN',
+    playerId: human.id,
+    playerSeat: human.seat,
+    playerPosition: knownStacks ? position : undefined,
+    initialPlayerStack,
+    effectiveStackBB: effectiveStackBB ?? undefined,
+    result: human.folded ? 'FOLD' : playerAward === 0 ? 'LOSS' : hasSplitPot ? 'SPLIT' : wonAllEligiblePots ? 'WIN' : 'PARTIAL_WIN',
     actionHistory: state.actionHistory.map((record) => ({ ...record })),
     playerNames: Object.fromEntries(state.players.map((player) => [player.id, player.name])),
-    potResults: state.pots.map((pot) => ({ amount: pot.amount, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
+    potResults: state.pots.map((pot) => ({ amount: pot.amount, eligiblePlayerIds: [...pot.eligiblePlayerIds], winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
     allIn: humanAllIn,
     allInWon: humanAllIn && playerAward > 0,
     vpip: humanVpip,
+    pfr: Boolean(pfrRecord),
+    threeBetOpportunity: Boolean(preflopActions.some((record) => record.raiseOpportunity && fullRaisesBefore(record) === 1)),
+    threeBet: Boolean(threeBetRecord),
+    fourBetOpportunity: Boolean(preflopActions.some((record) => record.raiseOpportunity && fullRaisesBefore(record) === 2)),
+    fourBet: Boolean(fourBetRecord),
+    foldPreflop: Boolean(foldAction?.street === 'PRE_FLOP'),
+    allInCall: state.actionHistory.some((record) => record.playerId === human.id && record.action === 'all-in' && record.isAllInCall),
+    sawFlop: sawStreet('FLOP', 3),
+    sawTurn: sawStreet('TURN', 4),
+    sawRiver: sawStreet('RIVER', 5),
+    trueShowdown,
+    wonWithoutShowdown,
   };
 }
 

@@ -1,6 +1,6 @@
 export const DATABASE_NAME = 'local-poker-game-v1';
-export const DATABASE_VERSION = 1;
-export const STORE_NAMES = ['career', 'currentHand', 'handHistory', 'settings'] as const;
+export const DATABASE_VERSION = 2;
+export const STORE_NAMES = ['career', 'currentHand', 'handHistory', 'handStats', 'settings'] as const;
 export type StoreName = (typeof STORE_NAMES)[number];
 
 let databasePromise: Promise<IDBDatabase> | null = null;

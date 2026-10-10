@@ -81,6 +81,8 @@ export type ActionRecord = {
   /** Optional metadata used by public AI observers; old records omit it. */
   isBlind?: boolean;
   isFullRaise?: boolean;
+  /** Analysis only: a legal aggressive action was available before this action. */
+  raiseOpportunity?: boolean;
   /** Stack and price before this action; used to classify short/all-in actions. */
   stackBeforeAction?: number;
   previousBet?: number;
@@ -111,6 +113,9 @@ export type GameState = {
   dealerSeat: number;
   /** Occupied seats when the hand began; folds and later seat filtering never alter this ring. */
   initialOccupiedSeats?: number[];
+  /** Compact analysis metadata captured before blinds are posted. */
+  handStartStacks?: Record<string, number>;
+  handStartedAt?: string;
   smallBlindSeat: number | null;
   bigBlindSeat: number | null;
   street: Street;

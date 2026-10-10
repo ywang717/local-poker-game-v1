@@ -9,6 +9,7 @@ import { syncActiveTableStack as syncCashTableStack } from './cashBuyInService';
 import { startTournament } from '../tournament/tournamentEngine';
 import type { TournamentState } from '../tournament/types';
 import type { FinancialTransaction } from './transactionTypes';
+import { createHandStatsFact, mergeHandStatsFacts } from './handStats';
 
 const MINIMUM_FUNDS = 5_000;
 
@@ -26,6 +27,7 @@ function appendTransaction(career: CareerState, transaction: FinancialTransactio
 function cloneCareer(career: CareerState): CareerState {
   return {
     ...career,
+    careerId: career.careerId ?? career.createdAt,
     unlockedLevels: [...career.unlockedLevels],
     statistics: {
       overall: { ...career.statistics.overall },
@@ -37,7 +39,8 @@ function cloneCareer(career: CareerState): CareerState {
       byPlayerCount: Object.fromEntries(Object.entries(career.statistics.byPlayerCount).map(([key, value]) => [key, { ...value }])) as CareerState['statistics']['byPlayerCount'],
       byLevel: Object.fromEntries(Object.entries(career.statistics.byLevel).map(([key, value]) => [key, { ...value }])) as CareerState['statistics']['byLevel'],
     },
-    handHistory: career.handHistory.map((entry) => ({ ...entry, playerHoleCards: [...entry.playerHoleCards], communityCards: [...entry.communityCards], actionHistory: entry.actionHistory.map((record) => ({ ...record })), playerNames: entry.playerNames ? { ...entry.playerNames } : undefined, potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })) })),
+    handHistory: career.handHistory.map((entry) => ({ ...entry, playerHoleCards: [...entry.playerHoleCards], communityCards: [...entry.communityCards], actionHistory: entry.actionHistory.map((record) => ({ ...record })), playerNames: entry.playerNames ? { ...entry.playerNames } : undefined, potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, eligiblePlayerIds: pot.eligiblePlayerIds ? [...pot.eligiblePlayerIds] : undefined, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })) })),
+    handStats: (career.handStats ?? []).map((fact) => ({ ...fact })),
     recordedHandIds: [...career.recordedHandIds],
     financialTransactions: (career.financialTransactions ?? []).map((entry) => ({ ...entry })),
     pendingCashBuyIns: (career.pendingCashBuyIns ?? []).map((entry) => ({ ...entry })),
@@ -67,6 +70,7 @@ export function createCareer(nickname: string): CareerState {
     saveVersion: 2,
     nickname: normalized,
     createdAt,
+    careerId: createdAt,
     currentFunds: 10_000,
     peakFunds: 10_000,
     lowestFunds: 10_000,
@@ -78,6 +82,7 @@ export function createCareer(nickname: string): CareerState {
     bankruptcyCount: 0,
     statistics: createEmptyStatistics(10_000),
     handHistory: [],
+    handStats: [],
     recordedHandIds: [],
     financialTransactions: [],
     pendingCashBuyIns: [],
@@ -240,6 +245,8 @@ export function recordHand(career: CareerState, summary: HandSummary): CareerSta
     startingHands[summary.mode] = applyStartingHand(startingHands[summary.mode], summary);
   } else next.statistics = recordStatistics(next.statistics, summary);
   next.handHistory = appendHandHistory(next.handHistory, summary);
+  const fact = createHandStatsFact(summary, next.careerId ?? next.createdAt);
+  if (fact) next.handStats = mergeHandStatsFacts(next.handStats ?? [], fact);
   next.recordedHandIds.push(summary.handId);
   return next;
 }

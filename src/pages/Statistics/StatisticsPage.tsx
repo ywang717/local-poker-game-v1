@@ -1,64 +1,72 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CareerState } from '../../career/careerState';
+import { aggregateHandStats, startingHandClasses, type HandStatsAggregate, type PositionGroup, type StackBucket } from '../../career/handStats';
 import type { GameMode } from '../../game/rules';
 import type { MatchType } from '../../match/matchTypes';
 import { getTableLevel } from '../../career/tableLevels';
 
 const number = (value: number) => value.toLocaleString('zh-CN');
-const rate = (wins: number, hands: number) => `${hands ? Math.round(wins / hands * 100) : 0}%`;
+const percent = (value: number, total: number) => total ? `${Math.round(value / total * 100)}%` : '—';
+const legacyPercent = (value: number, total: number) => total ? `${Math.round(value / total * 100)}%` : '0%';
+const coveredPercent = (value: number, total: number) => total ? `${Math.round(value / total * 100)}%（${value}/${total}）` : '—';
+const bb = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(1)} BB`;
 const date = (value: string) => new Date(value).toLocaleDateString('zh-CN');
+const sampleHint = (hands: number) => hands === 0 ? '无数据' : hands < 30 ? '样本极少' : hands < 100 ? '样本较少' : hands < 500 ? '已有一定样本' : '样本较充分';
+type MatrixMetric = 'profit' | 'bb100' | 'winRate' | 'vpip' | 'pfr';
+type SortKey = 'hands' | 'wins' | 'winRate' | 'vpip' | 'pfr' | 'fold' | 'profit' | 'bb100';
+type LegacyRow = { startingHand: string; hands: number; wins: number; splits: number; losses: number; totalProfitBB: number };
+
+function legacyRows(career: CareerState, matchType: MatchType, mode: GameMode): LegacyRow[] {
+  const source = matchType === 'MINI_TOURNAMENT' ? career.tournamentStatistics.byStartingHand[mode] : career.statistics.byStartingHand[mode];
+  return Object.entries(source ?? {}).map(([startingHand, stats]) => ({ startingHand, ...stats, totalProfitBB: 0 })).sort((a, b) => b.hands - a.hands || a.startingHand.localeCompare(b.startingHand));
+}
+
+function metricValue(row: HandStatsAggregate, metric: MatrixMetric): number | null {
+  if (!row.hands) return null;
+  if (metric === 'profit') return row.totalProfitBB;
+  if (metric === 'bb100') return row.totalProfitBB / row.hands * 100;
+  if (metric === 'winRate') return row.wins / row.hands * 100;
+  if (metric === 'vpip') return row.vpipOpportunities ? row.vpipHands / row.vpipOpportunities * 100 : null;
+  return row.pfrOpportunities ? row.pfrHands / row.pfrOpportunities * 100 : null;
+}
+
+function Matrix({ rows, mode, metric, onSelect }: { rows: Map<string, HandStatsAggregate>; mode: GameMode; metric: MatrixMetric; onSelect: (row: HandStatsAggregate) => void }) {
+  const ranks = mode === 'SHORT_DECK' ? ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6'] : ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+  const cellFor = (row: number, col: number): string => row === col ? `${ranks[row]}${ranks[col]}` : row < col ? `${ranks[row]}${ranks[col]}s` : `${ranks[col]}${ranks[row]}o`;
+  return <div className="starting-hand-matrix-wrap"><table className="starting-hand-matrix" aria-label="起手牌矩阵"><thead><tr><th />{ranks.map(rank => <th key={rank}>{rank}</th>)}</tr></thead><tbody>{ranks.map((rank, row) => <tr key={rank}><th>{rank}</th>{ranks.map((_, col) => { const key = cellFor(row, col); const value = rows.get(key); const current = value ? metricValue(value, metric) : null; const tone = current === null ? '' : current > 0 ? ' matrix-cell--profit' : current < 0 ? ' matrix-cell--loss' : ''; return <td key={key}><button type="button" className={`${value?.hands ? 'matrix-cell matrix-cell--active' : 'matrix-cell'}${tone}`} onClick={() => value && onSelect(value)} aria-label={`${key}，${value?.hands ?? 0} 手`}>{value ? <><strong>{key}</strong><span>{current === null ? '—' : metric === 'winRate' || metric === 'vpip' || metric === 'pfr' ? `${current.toFixed(0)}%` : current.toFixed(1)}</span></> : <strong>{key}</strong>}</button></td>; })}</tr>)}</tbody></table></div>;
+}
+
+function Detail({ row, onClose }: { row: HandStatsAggregate; onClose: () => void }) {
+  useEffect(() => { const listener = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); }; window.addEventListener('keydown', listener); return () => window.removeEventListener('keydown', listener); }, [onClose]);
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal hand-stats-detail" role="dialog" aria-modal="true" aria-labelledby="hand-stats-detail-title"><div className="modal-heading"><h3 id="hand-stats-detail-title">{row.startingHand} 统计详情</h3><button type="button" className="button button--muted" onClick={onClose} aria-label="关闭详情">关闭</button></div><div className="detail-stats"><span>总手数<strong>{number(row.hands)}</strong></span><span>单独获胜<strong>{number(row.wins)}</strong></span><span>平分<strong>{number(row.splits)}</strong></span><span>部分获胜<strong>{number(row.partialWins)}</strong></span><span>未获胜<strong>{number(row.losses)}</strong></span><span>实战胜率<strong>{coveredPercent(row.wins, row.hands)}</strong></span><span>盈利手数占比<strong>{coveredPercent(row.profitableHands, row.hands)}</strong></span><span>累计净收益<strong>{bb(row.totalProfitBB)}</strong></span><span>BB/100<strong>{bb(row.totalProfitBB / Math.max(1, row.hands) * 100)}</strong></span><span>最大单手盈利<strong>{bb(row.maxProfitBB)}</strong></span><span>最大单手亏损<strong>{bb(row.minProfitBB)}</strong></span><span>入池率 VPIP<strong>{coveredPercent(row.vpipHands, row.vpipOpportunities)}</strong></span><span>翻前加注 PFR<strong>{coveredPercent(row.pfrHands, row.pfrOpportunities)}</strong></span><span>翻前弃牌率<strong>{coveredPercent(row.foldPreflopHands, row.foldPreflopOpportunities)}</strong></span><span>3-Bet<strong>{coveredPercent(row.threeBetHands, row.threeBetOpportunities)}</strong></span><span>4-Bet<strong>{coveredPercent(row.fourBetHands, row.fourBetOpportunities)}</strong></span><span>翻前 All-in<strong>{number(row.allInHands)}</strong></span><span>翻前看到翻牌<strong>{coveredPercent(row.sawFlopHands, row.streetOpportunities)}</strong></span><span>看到转牌<strong>{coveredPercent(row.sawTurnHands, row.streetOpportunities)}</strong></span><span>看到河牌<strong>{coveredPercent(row.sawRiverHands, row.streetOpportunities)}</strong></span><span>真实摊牌<strong>{coveredPercent(row.showdownHands, row.sawFlopHands)}</strong></span><span>摊牌获胜 W$SD<strong>{coveredPercent(row.showdownWonHands, row.showdownHands)}</strong></span><span>无摊牌获胜<strong>{number(row.wonWithoutShowdownHands)}</strong></span><span>无摊牌净收益<strong>{bb(row.wonWithoutShowdownProfitBB)}</strong></span></div><p className="starting-hand-note">样本覆盖：{sampleHint(row.hands)}。没有可验证分母的指标显示为“—”。</p></section></div>;
+}
 
 export function StatisticsPage({ career, initialMatchType = 'CASH' }: { career: CareerState; initialMatchType?: MatchType }) {
   const [matchType, setMatchType] = useState<MatchType>(initialMatchType);
   const [mode, setMode] = useState<GameMode>('STANDARD');
+  const [view, setView] = useState<'TABLE' | 'MATRIX'>('TABLE');
+  const [positionGroup, setPositionGroup] = useState<PositionGroup | 'ALL'>('ALL');
+  const [stackBucket, setStackBucket] = useState<StackBucket | 'ALL'>('ALL');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<HandStatsAggregate | null>(null);
+  const [matrixMetric, setMatrixMetric] = useState<MatrixMetric>('profit');
+  const [sortKey, setSortKey] = useState<SortKey>('hands');
+  const [sortDescending, setSortDescending] = useState(true);
   const isTournament = matchType === 'MINI_TOURNAMENT';
   const cash = career.statistics.overall;
   const tournament = career.tournamentStatistics;
-  const startingHands = (isTournament ? tournament.byStartingHand : career.statistics.byStartingHand)[mode] ?? {};
-  const rows = Object.entries(startingHands).sort(([handA, statsA], [handB, statsB]) => statsB.hands - statsA.hands || handA.localeCompare(handB));
-  const cards = isTournament ? [
-    ['已结算参赛次数', number(tournament.tournamentsPlayed)],
-    ['冠军次数', number(tournament.tournamentsWon)],
-    ['冠军率', rate(tournament.tournamentsWon, tournament.tournamentsPlayed)],
-    ['前三次数', number(tournament.topThreeFinishes)],
-    ['最佳名次', tournament.bestFinish === null ? '—' : `第 ${tournament.bestFinish} 名`],
-    ['累计报名费', number(tournament.totalEntryFees)],
-    ['累计奖金', number(tournament.totalRewards)],
-    ['锦标赛净收益', number(tournament.totalNet)],
-  ] : [
-    ['总手数', number(cash.totalHands)], ['获胜手数', number(cash.wonHands)],
-    ['胜率', rate(cash.wonHands, cash.totalHands)], ['入池率（VPIP）', rate(cash.vpipHands, cash.totalHands)],
-    ['累计盈利', number(cash.totalProfit)], ['最大底池', number(cash.largestPot)],
-    ['All-in 胜率', rate(cash.allInWins, cash.allInCount)],
-  ];
-  return <section className="page">
-    <p className="eyebrow">生涯数据</p><h2>{isTournament ? '锦标赛生涯' : '长期表现'}</h2>
-    <div className="segmented" role="group" aria-label="选择生涯类型">
-      <button type="button" className={!isTournament ? 'selected' : ''} aria-pressed={!isTournament} onClick={() => setMatchType('CASH')}>现金桌</button>
-      <button type="button" className={isTournament ? 'selected' : ''} aria-pressed={isTournament} onClick={() => setMatchType('MINI_TOURNAMENT')}>锦标赛</button>
-    </div>
-    <div className="stat-list">{cards.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
-    {isTournament && <p className="starting-hand-note tournament-coverage">统计起点：{date(tournament.trackingStartedAt)}。前三次数及逐场比赛记录从此日期开始；其他累计指标保留旧生涯数据。锦标赛筹码不计入现金桌盈利。</p>}
-    <section className="starting-hand-stats" aria-labelledby="starting-hand-heading">
-      <h3 id="starting-hand-heading">手牌胜率</h3>
-      <p className="starting-hand-note">按起手牌组合统计：单独获胜手数 ÷ 发到该组合的总手数。平分单独记录；弃牌计入总手数和未获胜手数。</p>
-      {isTournament && <p className="starting-hand-note">包含可恢复的历史样本及更新后的全部样本；仅统计真人参与的手牌，观战不计入。</p>}
-      <div className="segmented" role="group" aria-label="选择统计模式">
-        <button type="button" className={mode === 'STANDARD' ? 'selected' : ''} aria-pressed={mode === 'STANDARD'} onClick={() => setMode('STANDARD')}>标准德州</button>
-        <button type="button" className={mode === 'SHORT_DECK' ? 'selected' : ''} aria-pressed={mode === 'SHORT_DECK'} onClick={() => setMode('SHORT_DECK')}>短牌德州</button>
-      </div>
-      {rows.length === 0 ? <p className="empty-state">该模式暂时没有手牌记录。</p> : <div className="starting-hand-table-wrap"><table className="starting-hand-table"><thead><tr><th>起手牌</th><th>手数</th><th>单独获胜</th><th>平分</th><th>未获胜</th><th>实战胜率</th></tr></thead><tbody>{rows.map(([hand, result]) => <tr key={hand}>
-        <th scope="row">{hand}</th><td data-label="手数">{result.hands}</td><td data-label="单独获胜">{result.wins}</td><td data-label="平分" aria-label={`平分 ${result.splits}`}>{result.splits}</td><td data-label="未获胜">{result.losses}</td><td data-label="实战胜率">{rate(result.wins, result.hands)}</td>
-      </tr>)}</tbody></table></div>}
-    </section>
-    {isTournament && <section className="tournament-history" aria-labelledby="tournament-history-heading">
-      <h3 id="tournament-history-heading">最近比赛</h3>
-      <p className="starting-hand-note">保留最近 500 场已结算比赛；累计指标不会随记录截断而减少。</p>
-      {career.tournamentHistory.length === 0 ? <p className="empty-state">暂无已结算比赛记录。</p> : <div className="tournament-record-list">{career.tournamentHistory.map(record => <article className="tournament-record" key={record.tournamentId}>
-        <div className="tournament-record-heading"><strong>{record.mode === 'STANDARD' ? '标准德州' : '短牌德州'} · Lv.{record.tableLevel} {getTableLevel(record.tableLevel).nameZh}</strong><span>{record.status === 'COMPLETED' ? '已完成' : '已退出'}</span></div>
-        <p><time dateTime={record.finishedAt}>{new Date(record.finishedAt).toLocaleString('zh-CN')}</time> · 第 {record.humanRank} 名{record.championName && <> · 冠军：{record.championName}</>}</p>
-        <dl><div><dt>报名费</dt><dd>{number(record.entryFee)}</dd></div><div><dt>奖金</dt><dd>{number(record.reward)}</dd></div><div><dt>净收益</dt><dd>{number(record.net)}</dd></div></dl>
-      </article>)}</div>}
-    </section>}
-  </section>;
+  const cards = isTournament ? [['已结算参赛次数', number(tournament.tournamentsPlayed)], ['冠军次数', number(tournament.tournamentsWon)], ['冠军率', legacyPercent(tournament.tournamentsWon, tournament.tournamentsPlayed)], ['前三次数', number(tournament.topThreeFinishes)], ['最佳名次', tournament.bestFinish === null ? '—' : `第 ${tournament.bestFinish} 名`], ['累计报名费', number(tournament.totalEntryFees)], ['累计奖金', number(tournament.totalRewards)], ['锦标赛净收益', number(tournament.totalNet)]] : [['总手数', number(cash.totalHands)], ['获胜手数', number(cash.wonHands)], ['胜率', legacyPercent(cash.wonHands, cash.totalHands)], ['入池率（VPIP）', legacyPercent(cash.vpipHands, cash.totalHands)], ['累计盈利', number(cash.totalProfit)], ['最大底池', number(cash.largestPot)], ['All-in 胜率', legacyPercent(cash.allInWins, cash.allInCount)]];
+  const facts = useMemo(() => (career.handStats ?? []).filter(fact => fact.matchType === matchType && fact.mode === mode && (positionGroup === 'ALL' || fact.positionGroup === positionGroup) && (stackBucket === 'ALL' || fact.effectiveStackBB !== null && ((stackBucket === 'UP_TO_20' && fact.effectiveStackBB <= 20) || (stackBucket === 'FROM_20_TO_40' && fact.effectiveStackBB > 20 && fact.effectiveStackBB <= 40) || (stackBucket === 'FROM_40_TO_100' && fact.effectiveStackBB > 40 && fact.effectiveStackBB <= 100) || (stackBucket === 'OVER_100' && fact.effectiveStackBB > 100))) && (!search.trim() || fact.startingHand.toLowerCase().includes(search.trim().toLowerCase()))), [career.handStats, matchType, mode, positionGroup, stackBucket, search]);
+  const aggregates = useMemo(() => aggregateHandStats(facts, startingHandClasses(mode)), [facts, mode]);
+  const aggregateMap = useMemo(() => new Map(aggregates.map(row => [row.startingHand, row])), [aggregates]);
+  const legacy = legacyRows(career, matchType, mode);
+  const hasFacts = (career.handStats ?? []).some(fact => fact.matchType === matchType && fact.mode === mode);
+  const displayRows = hasFacts ? aggregates.filter(row => row.hands > 0 || !search.trim()).filter(row => !search.trim() || row.startingHand.toLowerCase().includes(search.trim().toLowerCase())) : legacy as unknown as HandStatsAggregate[];
+  const sortedRows = useMemo(() => {
+    if (!hasFacts) return displayRows;
+    const value = (row: HandStatsAggregate) => sortKey === 'hands' ? row.hands : sortKey === 'wins' ? row.wins : sortKey === 'winRate' ? (row.hands ? row.wins / row.hands : 0) : sortKey === 'vpip' ? (row.vpipOpportunities ? row.vpipHands / row.vpipOpportunities : -1) : sortKey === 'pfr' ? (row.pfrOpportunities ? row.pfrHands / row.pfrOpportunities : -1) : sortKey === 'fold' ? (row.foldPreflopOpportunities ? row.foldPreflopHands / row.foldPreflopOpportunities : -1) : sortKey === 'bb100' ? (row.hands ? row.totalProfitBB / row.hands * 100 : 0) : row.totalProfitBB;
+    return [...displayRows].sort((left, right) => { const diff = value(left) - value(right); return diff ? (sortDescending ? -diff : diff) : left.startingHand.localeCompare(right.startingHand); });
+  }, [displayRows, hasFacts, sortDescending, sortKey]);
+  const resetFilters = () => { setPositionGroup('ALL'); setStackBucket('ALL'); setSearch(''); setSortKey('hands'); setSortDescending(true); setMatrixMetric('profit'); };
+  return <section className="page"><p className="eyebrow">生涯数据</p><h2>{isTournament ? '锦标赛生涯' : '长期表现'}</h2><div className="segmented" role="group" aria-label="选择生涯类型"><button type="button" className={!isTournament ? 'selected' : ''} aria-pressed={!isTournament} onClick={() => setMatchType('CASH')}>现金桌</button><button type="button" className={isTournament ? 'selected' : ''} aria-pressed={isTournament} onClick={() => setMatchType('MINI_TOURNAMENT')}>锦标赛</button></div><div className="stat-list">{cards.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>{isTournament && <p className="starting-hand-note tournament-coverage">统计起点：{date(tournament.trackingStartedAt)}。前三次数及逐场比赛记录从此日期开始；其他累计指标保留旧生涯数据。锦标赛筹码不计入现金桌盈利。</p>}<section className="starting-hand-stats" aria-labelledby="starting-hand-heading"><h3 id="starting-hand-heading">起手牌实战统计（手牌胜率）</h3><p className="starting-hand-note">长期统计不受最近 500 手牌历史限制。实战胜率 = 单独获胜手数 ÷ 发到该组合的总手数；平分、部分获胜和未获胜分别记录。</p>{isTournament && <p className="starting-hand-note">包含可恢复的历史样本及更新后的全部样本；仅统计真人参与的手牌，观战不计入。</p>}<div className="segmented" role="group" aria-label="选择统计模式"><button type="button" className={mode === 'STANDARD' ? 'selected' : ''} aria-pressed={mode === 'STANDARD'} onClick={() => setMode('STANDARD')}>标准德州</button><button type="button" className={mode === 'SHORT_DECK' ? 'selected' : ''} aria-pressed={mode === 'SHORT_DECK'} onClick={() => setMode('SHORT_DECK')}>短牌德州</button></div><p className="starting-hand-note">当前筛选样本：{number(facts.length)} 手 · {sampleHint(facts.length)}。含缺失维度的旧记录不会被虚假归类。</p><div className="hand-stats-filters"><label>视图<select aria-label="视图" value={view} onChange={event => setView(event.target.value as 'TABLE' | 'MATRIX')}><option value="TABLE">统计表</option><option value="MATRIX">169 / 81 矩阵</option></select></label><label>位置<select aria-label="位置" value={positionGroup} onChange={event => setPositionGroup(event.target.value as PositionGroup | 'ALL')}><option value="ALL">全部位置</option><option value="EARLY">前位</option><option value="MIDDLE">中位</option><option value="LATE">后位</option><option value="SB">小盲</option><option value="BB">大盲</option><option value="HEADS_UP">单挑</option></select></label><label>有效筹码<select aria-label="有效筹码" value={stackBucket} onChange={event => setStackBucket(event.target.value as StackBucket | 'ALL')}><option value="ALL">全部深度</option><option value="UP_TO_20">≤20 BB</option><option value="FROM_20_TO_40">20–40 BB</option><option value="FROM_40_TO_100">40–100 BB</option><option value="OVER_100">&gt;100 BB</option></select></label><label>搜索<input aria-label="搜索起手牌" value={search} onChange={event => setSearch(event.target.value)} placeholder="如 AA、AKs" /></label><button type="button" className="button button--muted hand-stats-reset" onClick={resetFilters}>重置筛选</button></div>{view === 'MATRIX' ? <><div className="matrix-controls"><label>矩阵指标<select aria-label="矩阵指标" value={matrixMetric} onChange={event => setMatrixMetric(event.target.value as MatrixMetric)}><option value="profit">净收益 BB</option><option value="bb100">BB/100</option><option value="winRate">实战胜率</option><option value="vpip">VPIP</option><option value="pfr">PFR</option></select></label><span className="matrix-legend">绿色盈利/较高 · 红色亏损 · 灰色无数据</span></div><Matrix rows={aggregateMap} mode={mode} metric={matrixMetric} onSelect={setSelected} /></>  : hasFacts ? <div className="starting-hand-table-wrap"><table className="starting-hand-table"><thead><tr><th>起手牌</th>{([['hands','手数'],['wins','单独获胜'],['winRate','胜率'],['vpip','VPIP'],['pfr','PFR'],['fold','翻前弃牌率'],['profit','净收益 BB'],['bb100','BB/100']] as [SortKey,string][]).map(([key,label]) => <th key={key}><button type="button" className="table-sort" onClick={() => { setSortDescending(sortKey === key ? !sortDescending : true); setSortKey(key); }}>{label}{sortKey === key ? (sortDescending ? ' ↓' : ' ↑') : ''}</button></th>)}<th>平分/部分/未获胜</th><th>操作</th></tr></thead><tbody>{sortedRows.map(row => { const result = row as HandStatsAggregate; return <tr key={result.startingHand}><th scope="row">{result.startingHand}</th><td data-label="手数">{result.hands}</td><td data-label="单独获胜">{result.wins}</td><td data-label="胜率">{percent(result.wins, result.hands)}</td><td data-label="VPIP">{percent(result.vpipHands, result.vpipOpportunities)}</td><td data-label="PFR">{percent(result.pfrHands, result.pfrOpportunities)}</td><td data-label="翻前弃牌率">{percent(result.foldPreflopHands, result.foldPreflopOpportunities)}</td><td data-label="净收益 BB" className={result.totalProfitBB > 0 ? 'profit' : result.totalProfitBB < 0 ? 'loss' : ''}>{bb(result.totalProfitBB)}</td><td data-label="BB/100">{bb(result.hands ? result.totalProfitBB / result.hands * 100 : 0)}</td><td data-label="平分/部分/未获胜">{result.splits} / {result.partialWins} / {result.losses}</td><td><button type="button" className="link-button" onClick={() => setSelected(result)}>详情</button></td></tr>; })}</tbody></table></div> : displayRows.length === 0 ? <p className="empty-state">该模式暂时没有手牌记录。</p> : <div className="starting-hand-table-wrap"><table className="starting-hand-table"><thead><tr><th>起手牌</th><th>手数</th><th>单独获胜</th><th>平分</th><th>未获胜</th><th>实战胜率</th></tr></thead><tbody>{(displayRows as unknown as LegacyRow[]).map(result => <tr key={result.startingHand}><th scope="row">{result.startingHand}</th><td data-label="手数">{result.hands}</td><td data-label="单独获胜">{result.wins}</td><td data-label="平分" aria-label={`平分 ${result.splits}`}>{result.splits}</td><td data-label="未获胜">{result.losses}</td><td data-label="实战胜率">{legacyPercent(result.wins, result.hands)}</td></tr>)}</tbody></table></div>}</section>{isTournament && <section className="tournament-history" aria-labelledby="tournament-history-heading"><h3 id="tournament-history-heading">最近比赛</h3><p className="starting-hand-note">保留最近 500 场已结算比赛；累计指标不会随记录截断而减少。</p>{career.tournamentHistory.length === 0 ? <p className="empty-state">暂无已结算比赛记录。</p> : <div className="tournament-record-list">{career.tournamentHistory.map(record => <article className="tournament-record" key={record.tournamentId}><div className="tournament-record-heading"><strong>{record.mode === 'STANDARD' ? '标准德州' : '短牌德州'} · Lv.{record.tableLevel} {getTableLevel(record.tableLevel).nameZh}</strong><span>{record.status === 'COMPLETED' ? '已完成' : '已退出'}</span></div><p><time dateTime={record.finishedAt}>{new Date(record.finishedAt).toLocaleString('zh-CN')}</time> · 第 {record.humanRank} 名{record.championName && <> · 冠军：{record.championName}</>}</p><dl><div><dt>报名费</dt><dd>{number(record.entryFee)}</dd></div><div><dt>奖金</dt><dd>{number(record.reward)}</dd></div><div><dt>净收益</dt><dd>{number(record.net)}</dd></div></dl></article>)}</div>}</section>}{selected && <Detail row={selected} onClose={() => setSelected(null)} />}</section>;
 }

@@ -15,7 +15,15 @@ function historyTrimmed(career: CareerState): CareerState {
 }
 
 function careerRecord(career: CareerState): VersionedSave {
-  return { saveVersion: CURRENT_SAVE_VERSION, career: clone(historyTrimmed(career)) };
+  const persisted = clone(historyTrimmed(career));
+  // Long-term hand facts live in their own store so they are not truncated or
+  // duplicated inside the compact career record.
+  delete persisted.handStats;
+  return { saveVersion: CURRENT_SAVE_VERSION, career: persisted };
+}
+
+function handStatsRecord(career: CareerState): { careerId: string; entries: NonNullable<CareerState['handStats']> } {
+  return { careerId: career.careerId ?? career.createdAt, entries: clone(career.handStats ?? []) };
 }
 
 async function rotateAndWrite(storeName: StoreName, value: unknown): Promise<void> {
@@ -30,12 +38,15 @@ export async function saveCareer(career: CareerState): Promise<void> {
   const currentHistory = { entries: record.career.handHistory.slice(0, HAND_HISTORY_LIMIT) };
   const previousCareer = await readRecord('career', 'current');
   const previousHistory = await readRecord('handHistory', 'current');
+  const previousHandStats = await readRecord('handStats', 'current');
   const records: { storeName: StoreName; key: string; value: unknown }[] = [
     { storeName: 'career', key: 'current', value: record },
     { storeName: 'handHistory', key: 'current', value: currentHistory },
+    { storeName: 'handStats', key: 'current', value: handStatsRecord(career) },
   ];
   if (previousCareer !== undefined) records.push({ storeName: 'career', key: 'backup', value: previousCareer });
   if (previousHistory !== undefined) records.push({ storeName: 'handHistory', key: 'backup', value: previousHistory });
+  if (previousHandStats !== undefined) records.push({ storeName: 'handStats', key: 'backup', value: previousHandStats });
   await writeRecords(records);
 }
 
@@ -48,6 +59,13 @@ function historyFromRecord(raw: unknown): CareerState['handHistory'] | null {
   return clone((raw as { entries: CareerState['handHistory'] }).entries);
 }
 
+function handStatsFromRecord(raw: unknown, careerId: string): NonNullable<CareerState['handStats']> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as { careerId?: unknown; entries?: unknown };
+  if (record.careerId !== careerId || !Array.isArray(record.entries)) return null;
+  return clone(record.entries) as NonNullable<CareerState['handStats']>;
+}
+
 export async function loadCareer(): Promise<LoadResult> {
   const current = await readRecord('career', 'current');
   const backup = await readRecord('career', 'backup');
@@ -58,11 +76,15 @@ export async function loadCareer(): Promise<LoadResult> {
     career = parseCareerRecord(current);
     const history = historyFromRecord(await readRecord('handHistory', 'current'));
     if (history) career.handHistory = history;
+    const facts = handStatsFromRecord(await readRecord('handStats', 'current'), career.careerId ?? career.createdAt);
+    if (facts && (facts.length > 0 || career.handHistory.length === 0)) career.handStats = facts;
   } catch (currentError) {
     try {
       career = parseCareerRecord(backup);
       const history = historyFromRecord(await readRecord('handHistory', 'backup'));
       if (history) career.handHistory = history;
+      const facts = handStatsFromRecord(await readRecord('handStats', 'backup'), career.careerId ?? career.createdAt);
+      if (facts && (facts.length > 0 || career.handHistory.length === 0)) career.handStats = facts;
       restoredFromBackup = true;
     } catch (backupError) {
       return { status: 'corrupt', career: null, restoredFromBackup: false, error: `存档无法恢复: ${String((backupError as Error)?.message ?? currentError)}` };
@@ -78,6 +100,7 @@ export async function loadCareer(): Promise<LoadResult> {
       await writeRecords([
         { storeName: 'career', key: 'current', value: careerRecord(loadedCareer) },
         { storeName: 'handHistory', key: 'current', value: { entries: loadedCareer.handHistory } },
+        { storeName: 'handStats', key: 'current', value: handStatsRecord(loadedCareer) },
       ]);
     } catch {
       // Keep the readable save available; a later normal save will include the
@@ -104,19 +127,22 @@ export async function saveCareerAndHandSnapshot(career: CareerState, snapshot: H
   const migratedSnapshot = migrateHandSnapshot(snapshot);
   const record = careerRecord(career);
   const currentHistory = { entries: record.career.handHistory.slice(0, HAND_HISTORY_LIMIT) };
-  const [previousCareer, previousHistory, previousHand] = await Promise.all([
+  const [previousCareer, previousHistory, previousHand, previousHandStats] = await Promise.all([
     readRecord('career', 'current'),
     readRecord('handHistory', 'current'),
     readRecord('currentHand', 'current'),
+    readRecord('handStats', 'current'),
   ]);
   const records: { storeName: StoreName; key: string; value: unknown }[] = [
     { storeName: 'career', key: 'current', value: record },
     { storeName: 'handHistory', key: 'current', value: currentHistory },
+    { storeName: 'handStats', key: 'current', value: handStatsRecord(career) },
     { storeName: 'currentHand', key: 'current', value: migratedSnapshot },
   ];
   if (previousCareer !== undefined) records.push({ storeName: 'career', key: 'backup', value: previousCareer });
   if (previousHistory !== undefined) records.push({ storeName: 'handHistory', key: 'backup', value: previousHistory });
   if (previousHand !== undefined) records.push({ storeName: 'currentHand', key: 'backup', value: previousHand });
+  if (previousHandStats !== undefined) records.push({ storeName: 'handStats', key: 'backup', value: previousHandStats });
   await writeRecords(records);
 }
 

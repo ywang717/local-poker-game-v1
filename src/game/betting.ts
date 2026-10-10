@@ -168,6 +168,7 @@ export function applyAction(state: GameState, command: { playerId: string; actio
     isAggressiveRaise,
     facingBet: previousBet > player.streetContribution,
     isFullRaise,
+    raiseOpportunity: legal.some(entry => entry.kind === 'raise-to' || entry.kind === 'bet-to' || (entry.kind === 'all-in' && player.stack > Math.max(0, state.currentBet - player.streetContribution))),
   });
 
   if (onlyOneLivePlayer(next)) {
