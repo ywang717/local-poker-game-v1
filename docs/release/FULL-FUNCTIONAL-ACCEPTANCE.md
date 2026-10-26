@@ -45,10 +45,33 @@
 - 基线：71文件，390测试；Typecheck与Build通过。
 - 当前默认测试：77文件，485测试 PASS。
 - 70组标准/短牌 × 7人数 × 5等级配置及姓名/盲注检查，额外1条锁定/禁止7人检查，包含在默认测试中。
+- AI专项：22文件，134测试 PASS。
 - Cash Buy-in：4文件，26测试 PASS；Tournament：6文件，21测试 PASS。
 - Release Smoke：1文件，3测试 PASS；800手AI、600手规则、20场完整锦标赛。大型模拟未加入默认测试或CI。
 - Typecheck：PASS；GitHub Pages子路径生产构建：PASS。
 - 已有部分React测试仍打印act提示，测试没有失败。
+
+## 功能结果索引
+
+以下PASS指本地生产构建；线上修复版尚未部署，不能由本地结果代替。
+
+| 检查 | 数据/组件回归 | 真实浏览器 | 证据 |
+|---|---|---|---|
+| 创建昵称、默认资金、导航、设置保存、取消新生涯 | PASS | PASS | home-create-settings |
+| 2/3/4/5/6/8/9人、两模式、五级买入门槛 | PASS（70组配置） | PASS（全部人数入桌、两模式等级选择） | selectionMatrix；names-*；tournament-entry-* |
+| AI姓名、刷新、下一手、冠军、回顾时间线 | PASS | PASS | names-*；play-*；tournament-*；history-and-statistics |
+| 连续行动、全下确认、非法金额、暂停及速度 | PASS | PASS（过牌/跟注/弃牌/全下与快捷金额） | action-validation-and-allin；pause-resume-*；play-* |
+| 现金补码、取消、退款、离桌与重载 | PASS | PASS | cashBuyIn；leaveTableRecovery；buyin-cancel-leave；pending-buyin-reload |
+| 冠军、淘汰观战、快速模拟、奖金幂等 | PASS | PASS（引擎固定状态边界） | tournament-*；spectator-* |
+| 历史分页、部分获胜、行动金额及退款 | PASS | PASS（分页与详情）；金额/退款由回归核对 | fullFunctionalRegression；history-and-statistics |
+| 五手独立统计、模式/比赛隔离、重复去重 | PASS | PASS（BB/100、VPIP、PFR、胜率及矩阵） | fullFunctionalStatistics；handStatsPersistence；history-and-statistics |
+| 牌型提示、全下确认与音效/静音 | PASS | PASS | names-*；audio-*；action-validation-and-allin |
+| 四下注阶段恢复、Pending恢复、损坏存档备份 | PASS | PASS | restore-*；pending-buyin-reload；corrupt-save-backup |
+| 全下/边池/Applied/淘汰状态恢复 | PASS（相关存档、资金、锦标赛回归） | 部分PASS（锦标赛结果及Pending）；每一种组合逐一浏览器刷新NOT RUN | tests/storage；tests/tournament |
+| PWA离线启动 | PASS（缓存构建） | Chromium PASS；WebKit NOT RUN | offline-and-reload |
+| 版本更新后保留存档 | NOT RUN | NOT RUN（等待发布） | update-profile.json已记录更新前状态 |
+
+浏览器没有逐一覆盖每种设置值下的全部操作组合，动画三档的实际时间差、关闭自动亮牌后的全部摊牌情形、实体扬声器听感为NOT RUN；保存与相关组件行为已有测试。普通Bet/Raise专门人工点击链未单列为浏览器用例，由组件/引擎回归及自动对局覆盖，不能视作独立人工验收通过。
 
 ## 浏览器检查
 
@@ -61,7 +84,15 @@
 
 ## 发布与线上结果
 
-执行中：发布前功能门禁与独立复核完成。待安全推送main、GitHub Actions、Pages部署及线上复测完成后补齐Commit、Actions与版本更新存档验证。
+发布阻塞（2026-10-26）：
+
+- 本地修复提交：`4186c96e0aab5f577e16581e9adb309abf1f8101`；树 `f92abbef8ad20d47040e04f796348e2318c26a63`。
+- 远端 main 实查仍为 `1a999ec28ff60592d3593384e12747550b0abcbe`，未覆盖他人提交。
+- 普通推送失败：Git 无法取得 GitHub 用户名/凭据；现有 GitHub 连接创建 Blob 返回403（Resource not accessible by integration）。
+- 浏览器自动化报告 Mac 锁定，仓库网页无法打开；已请求用户解锁后继续。
+- GitHub Actions本次修复运行：NOT RUN；Pages本次修复部署：NOT RUN；修复后线上全量复测：NOT RUN。
+- 更新前的独立生涯已保存：昵称“更新存档保留测试”、资金10,000、音效关闭；更新前资源 `index-1cIBA81U.js`。更新后保留验证：NOT RUN。
+- 已有网站仍可访问：https://ywang717.github.io/local-poker-game-v1/ 。可访问不等于本次修复已部署。
 
 ## 限制与未执行项
 
