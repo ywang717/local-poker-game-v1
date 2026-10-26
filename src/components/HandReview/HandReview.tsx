@@ -20,16 +20,17 @@ const streetLabels: Record<string, string> = {
 
 export function HandReview({ hand, defaultExpanded = false, collapsible = true }: { hand: HandSummary; defaultExpanded?: boolean; collapsible?: boolean }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const playerName = (playerId: string): string => hand.playerNames?.[playerId] ?? playerId;
+  const playerName = (playerId: string): string => hand.playerNames?.[playerId] ?? (playerId === (hand.playerId ?? 'human') ? '玩家' : 'AI 玩家（历史姓名未保存）');
   const potResults = hand.potResults ?? [];
-  const resultLabel = hand.result === 'WIN' ? '获胜' : hand.result === 'SPLIT' ? '平分' : hand.result === 'FOLD' ? '弃牌' : '未获胜';
+  const resultLabel = hand.result === 'WIN' ? '获胜' : hand.result === 'SPLIT' ? '平分' : hand.result === 'FOLD' ? '弃牌' : hand.result === 'PARTIAL_WIN' ? '部分获胜' : '未获胜';
   return <section className="hand-review" aria-label="上一手回顾">
     <div className="hand-review-header"><div><p className="eyebrow">上一手回顾</p><strong>{hand.handId}</strong></div>{collapsible && <button type="button" className="link-button" onClick={() => setExpanded((value) => !value)}>{expanded ? '收起上一手' : '查看上一手'}</button>}</div>
     {expanded && <div className="hand-review-body">
       <div className="hand-review-cards"><div><span>玩家底牌</span><div>{hand.playerHoleCards.length ? hand.playerHoleCards.map((card) => <PlayingCard card={card} key={card.id} />) : '未记录'}</div></div><div><span>公共牌</span><div>{hand.communityCards.length ? hand.communityCards.map((card) => <PlayingCard card={card} key={card.id} />) : '未记录'}</div></div></div>
       <div className="detail-stats"><span>最终牌型 <strong>{hand.finalCategory ?? '无'}</strong></span><span>最终底池 <strong>{hand.finalPot.toLocaleString('zh-CN')}</strong></span><span>结果 <strong className={hand.playerNet >= 0 ? 'profit' : 'loss'}>{resultLabel}</strong></span></div>
       {potResults.length > 0 && <div className="pot-review-list"><strong>底池结算</strong>{potResults.map((pot, index) => <div className="pot-review-row" key={`${hand.handId}-pot-${index}`}><span>{index === 0 ? '主池' : `边池 ${index}`} {pot.amount.toLocaleString('zh-CN')}</span><span>获胜者：{pot.winnerPlayerIds.map(playerName).join('、') || '无'}</span><span>派奖：{pot.awards.map((award) => `${playerName(award.playerId)} ${award.amount.toLocaleString('zh-CN')}`).join('、') || '无'}</span></div>)}</div>}
-      <h4>行动时间线</h4><ol className="timeline">{hand.actionHistory.length ? hand.actionHistory.map((action, index) => <li key={`${action.playerId}-${index}`}><span>{streetLabels[action.street] ?? action.street}</span>{playerName(action.playerId)} {actionLabels[action.action] ?? action.action} {action.amount.toLocaleString('zh-CN')}</li>) : <li>暂无行动记录</li>}</ol>
+      {(hand.refunds ?? []).length > 0 && <div className="refund-review"><strong>未跟注退还</strong>{hand.refunds!.map((refund, index) => <p key={index}>{playerName(refund.playerId)} {refund.amount.toLocaleString('zh-CN')}</p>)}</div>}
+      <h4>行动时间线</h4><ol className="timeline">{hand.actionHistory.length ? hand.actionHistory.map((action, index) => <li key={`${action.playerId}-${index}`}><span>{streetLabels[action.street] ?? action.street}</span>{playerName(action.playerId)} {action.action === 'raise-to' || action.action === 'bet-to' ? `${action.action === 'raise-to' ? '加注到' : '下注到'} ${action.totalTo.toLocaleString('zh-CN')}（本次投入 ${action.amount.toLocaleString('zh-CN')}）` : `${actionLabels[action.action] ?? action.action} ${action.amount.toLocaleString('zh-CN')}`}</li>) : <li>暂无行动记录</li>}</ol>
     </div>}
   </section>;
 }

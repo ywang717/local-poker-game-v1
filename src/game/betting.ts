@@ -153,7 +153,7 @@ export function applyAction(state: GameState, command: { playerId: string; actio
 
   const increase = Math.max(0, targetContribution - previousBet);
   const isAggressiveRaise = increase > 0;
-  const isAllInCall = command.action.kind === 'all-in' && !isAggressiveRaise;
+  const isAllInCall = (command.action.kind === 'all-in' || command.action.kind === 'call' && nextPlayer.stack === 0) && !isAggressiveRaise;
   const isFullRaise = isAggressiveRaise && (previousBet === 0 || increase >= (state.lastFullRaise || state.bigBlind));
   next.actionHistory.push({
     playerId: command.playerId,

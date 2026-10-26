@@ -1,3 +1,5 @@
+import { playGameSound } from '../audio/gameAudio';
+import { useSettingsStore } from './settingsStore';
 import { create } from 'zustand';
 import { applyAction as applyBettingAction, getLegalActions } from '../game/betting';
 import type { GameState, PlayerAction } from '../game/gameState';
@@ -55,6 +57,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const result = applyBettingAction(game, { playerId, action });
     if (!result.ok) return false;
     set({ game: result.state });
+    playGameSound(action.kind, () => useSettingsStore.getState().soundEnabled);
     persistGame(result.state);
     return true;
   },

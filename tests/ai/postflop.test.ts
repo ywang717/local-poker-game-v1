@@ -22,8 +22,8 @@ describe('postflop training signals', () => {
     expect(river.drawPotential).toBe(0);
   });
 
-  it('recognizes the short-deck low-ace straight draw', () => {
+  it('does not use a private ace as a low short-deck draw', () => {
     const draw = postflopStrength([c(14, 'clubs'), c(6, 'diamonds')], [c(7, 'hearts'), c(8, 'spades'), c(13, 'clubs')], 'SHORT_DECK');
-    expect(draw.drawPotential).toBeGreaterThan(0);
+    expect(draw.drawPotential).toBe(0);
   });
 });

@@ -1,0 +1,12 @@
+import { describe, it, expect } from 'vitest';
+import { createCareer,recordHand } from '../../src/career/careerService';
+import { aggregateHandStats,createHandStatsFact } from '../../src/career/handStats';
+import { createCard } from '../../src/game/cards';
+import { saveCareer,loadCareer,resetStorageForTests } from '../../src/storage/saveSystem';
+import type { HandSummary } from '../../src/career/handHistory';
+function sample(i:number,mode:HandSummary['mode']='STANDARD',matchType:HandSummary['matchType']='CASH'):HandSummary {return {handId:`${mode}-${matchType}-${i}`,matchType,mode,timestamp:'2026-10-26T00:00:00Z',tableLevel:1,tableSize:6,smallBlind:25,bigBlind:50,dealerSeat:0,playerHoleCards:[createCard(14,'spades'),createCard(14,'hearts')],communityCards:[],finalCategory:null,finalPot:300,playerContribution:100,playerNet:[200,0,-100,-50,40][i],result:(['WIN','SPLIT','LOSS','FOLD','PARTIAL_WIN'] as const)[i],actionHistory:[],vpip:i<3,pfr:i===0||i===2,foldPreflop:i===3};}
+describe('independent five-hand accounting oracle',()=>{
+ it.each(['STANDARD','SHORT_DECK'] as const)('%s reconciles exact profit, rates, results and reload',async mode=>{await resetStorageForTests();let career=createCareer('核账玩家');for(let i=0;i<5;i++){career=recordHand(career,sample(i,mode));career=recordHand(career,sample(i,mode));}await saveCareer(career);const loaded=(await loadCareer()).career!;const a=aggregateHandStats(loaded.handStats!)[0];expect(a).toMatchObject({hands:5,wins:1,splits:1,partialWins:1,losses:2,vpipHands:3,pfrHands:2,totalProfit:90,totalProfitBB:1.8});expect(a.totalProfitBB/a.hands*100).toBeCloseTo(36);expect(loaded.statistics.overall.totalProfit).toBe(90);});
+ it('does not mix tournament chips into cash profit',()=>{let career=createCareer('玩家');for(let i=0;i<5;i++)career=recordHand(career,sample(i,'SHORT_DECK','MINI_TOURNAMENT'));expect(career.statistics.overall.totalHands).toBe(0);expect(career.statistics.overall.totalProfit).toBe(0);expect(aggregateHandStats(career.handStats!)[0].totalProfitBB).toBeCloseTo(1.8);});
+ it('does not count a non-reopened short raise as a new 3-bet opportunity',()=>{const fact=createHandStatsFact({...sample(0),threeBetOpportunity:false,actionHistory:[{playerId:'ai',street:'PRE_FLOP',action:'raise-to',amount:150,totalTo:150,isAggressiveRaise:true,isFullRaise:true},{playerId:'human',street:'PRE_FLOP',action:'call',amount:20,totalTo:170,raiseOpportunity:false}]},'c')!;expect(fact.threeBetOpportunity).toBe(0);});
+});

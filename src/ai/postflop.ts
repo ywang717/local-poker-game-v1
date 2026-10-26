@@ -16,7 +16,7 @@ function drawPotential(holeCards: readonly Card[], board: readonly Card[], mode:
   for (const card of cards) suits.set(card.suit, (suits.get(card.suit) ?? 0) + 1);
   const flushDraw = [...suits.entries()].some(([suit, count]) => count === 4 && holeCards.some((card) => card.suit === suit)) ? 0.28 : 0;
   const ranks = new Set(cards.map((card) => card.rank));
-  const straightDraw = rules.straightWindows.some((window) => window.filter((rank) => ranks.has(rank)).length === 4
+  const straightDraw = rules.straightWindows.some((window) => !(window[0] === 14 && rules.lowAceRequiresCommunityAce && !board.some(card => card.rank === 14)) && window.filter((rank) => ranks.has(rank)).length === 4
     && holeCards.some((card) => window.includes(card.rank))) ? 0.2 : 0;
   return Math.min(0.42, flushDraw + straightDraw);
 }

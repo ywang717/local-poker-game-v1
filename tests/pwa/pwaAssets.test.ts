@@ -59,3 +59,8 @@ describe('PWA release assets', () => {
     expect(readme).toContain('Settings → Pages');
   });
 });
+
+it('precaches the favicon for offline refreshes', async () => {
+  const { readFileSync } = await import('node:fs');
+  expect(readFileSync('vite.config.ts','utf8')).toMatch(/includeAssets:\s*\[[^\]]*'favicon.svg'/);
+});

@@ -27,6 +27,8 @@ export type CareerState = {
   handHistory: HandSummary[];
   /** Compact long-term facts; full hand snapshots remain limited to handHistory. */
   handStats?: HandStatsFact[];
+  /** Version of public-history metric repairs, separate from the DB format. */
+  handStatsVersion?: number;
   recordedHandIds: string[];
   financialTransactions: FinancialTransaction[];
   pendingCashBuyIns: PendingCashBuyIn[];

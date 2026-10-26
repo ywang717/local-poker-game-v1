@@ -43,6 +43,8 @@ export type HandSummary = {
   /** Names captured at settlement so history remains readable after the table closes. */
   playerNames?: Record<string, string>;
   potResults?: PotReview[];
+  /** Uncalled contributions returned separately from competitive pots. */
+  refunds?: { playerId: string; amount: number }[];
   allIn?: boolean;
   allInWon?: boolean;
   vpip?: boolean;
@@ -66,6 +68,7 @@ export function appendHandHistory(history: readonly HandSummary[], entry: HandSu
     playerHoleCards: [...entry.playerHoleCards],
     communityCards: [...entry.communityCards],
     actionHistory: entry.actionHistory.map((record) => ({ ...record })),
+    refunds: entry.refunds?.map(refund => ({ ...refund })),
     playerNames: entry.playerNames ? { ...entry.playerNames } : undefined,
     potResults: (entry.potResults ?? []).map((pot) => ({ ...pot, eligiblePlayerIds: pot.eligiblePlayerIds ? [...pot.eligiblePlayerIds] : undefined, winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
   }, ...history].slice(0, HAND_HISTORY_LIMIT);

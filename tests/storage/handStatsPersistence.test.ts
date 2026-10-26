@@ -23,3 +23,17 @@ describe('long-term hand stats persistence', () => {
     expect(new Set(loaded.career?.handStats?.map(fact => fact.factKey)).size).toBe(505);
   });
 });
+
+it('repairs cached legacy metrics from retained public history once without dropping older facts', async () => {
+  let career = recordHand(createCareer('统计修复'), { ...hand('repair'), pfr: true, threeBetOpportunity: false });
+  career = recordHand(career, hand('older-only-fact'));
+  career.handHistory = career.handHistory.filter(h=>h.handId==='repair');
+  const fact = career.handStats!.find(f=>f.handId==='repair')!;
+  fact.pfr = 0; fact.threeBetOpportunity = 1;
+  delete (career as typeof career & { handStatsVersion?: number }).handStatsVersion;
+  await saveCareer(career);
+  const first=(await loadCareer()).career!;
+  expect(first.handStats!.find(f=>f.handId==='repair')).toMatchObject({pfr:1,threeBetOpportunity:0});
+  expect(first.handStats).toHaveLength(2);
+  expect((await loadCareer()).career).toEqual(first);
+});

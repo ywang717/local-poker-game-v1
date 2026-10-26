@@ -1,7 +1,7 @@
 import type { GameState } from '../../game/gameState';
 
 export function PotDisplay({ game }: { game: GameState }) {
-  const total = game.players.reduce((sum, player) => sum + player.handContribution, 0);
+  const total = game.street === 'SETTLEMENT' ? game.pots.reduce((sum, pot) => sum + pot.amount, 0) : game.players.reduce((sum, player) => sum + player.handContribution, 0);
   return <section className="pot-display" aria-label="底池">
     <span className="eyebrow">底池</span>
     <strong>{total.toLocaleString('zh-CN')}</strong>

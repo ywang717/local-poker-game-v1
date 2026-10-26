@@ -45,3 +45,11 @@ describe('human all-in summary', () => {
     expect(handSummary(blindOnly)?.vpip).toBe(false);
   });
 });
+
+it('counts a human call that exhausts their stack as all-in participation', () => {
+  const state=settledState();const human=state.players.find(p=>p.isHuman)!;
+  human.allIn=true;human.handContribution=90;
+  state.actionHistory=[{playerId:'human',street:'RIVER',action:'call',amount:90,totalTo:90,stackBeforeAction:90,isAllInCall:true}];
+  expect(handSummary(state)?.allIn).toBe(true);
+  expect(handSummary(state)?.allInCall).toBe(true);
+});

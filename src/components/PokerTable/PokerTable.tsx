@@ -16,7 +16,7 @@ export function PokerTable({ game }: { game: GameState }) {
   const human = game.players.find((player) => player.isHuman);
   const humanAward = game.pots.flatMap((pot) => pot.awards).filter((award) => award.playerId === human?.id).reduce((sum, award) => sum + award.amount, 0);
   return <main className="poker-table" aria-label="牌桌">
-    <div className="table-header"><span>{game.street === 'PRE_FLOP' ? '翻牌前' : game.street}</span><span>第 {game.handNumber} 手</span></div>
+    <div className="table-header"><span>{({ PRE_FLOP: '翻牌前', FLOP: '翻牌', TURN: '转牌', RIVER: '河牌', SHOWDOWN: '摊牌', SETTLEMENT: '结算' })[game.street]}</span><span>第 {game.handNumber} 手</span></div>
     <div className="seat-grid">
       {game.players.filter((player) => !player.folded).map((player) => <article className={`player-seat${game.actingSeat === player.seat ? ' player-seat--acting' : ''}`} key={player.id}>
         <div className="avatar">{player.name.slice(0, 1)}</div>

@@ -224,10 +224,10 @@ export function createHandStatsFact(summary: HandSummary, careerId: string): Han
   const playerActions = preflop.filter((record) => record.playerId === playerId && !record.isBlind);
   const fullRaiseActions = playerActions.filter((record) => record.isAggressiveRaise && record.isFullRaise);
   const pfrActions = playerActions.filter((record) => record.isAggressiveRaise);
-  const threeBetOpportunity = playerActions.some((record, index) => previousFullRaises(preflop, preflop.indexOf(record)) === 1) ? 1 : 0;
-  const fourBetOpportunity = playerActions.some((record) => previousFullRaises(preflop, preflop.indexOf(record)) >= 2) ? 1 : 0;
-  const threeBet = fullRaiseActions.some((record) => previousFullRaises(preflop, preflop.indexOf(record)) === 1) ? 1 : 0;
-  const fourBet = fullRaiseActions.some((record) => previousFullRaises(preflop, preflop.indexOf(record)) >= 2) ? 1 : 0;
+  const threeBetOpportunity = (summary.threeBetOpportunity ?? playerActions.some(record => record.raiseOpportunity !== false && previousFullRaises(preflop, preflop.indexOf(record)) === 1)) ? 1 : 0;
+  const fourBetOpportunity = (summary.fourBetOpportunity ?? playerActions.some(record => record.raiseOpportunity !== false && previousFullRaises(preflop, preflop.indexOf(record)) === 2)) ? 1 : 0;
+  const threeBet = (summary.threeBet ?? fullRaiseActions.some(record => previousFullRaises(preflop, preflop.indexOf(record)) === 1)) ? 1 : 0;
+  const fourBet = (summary.fourBet ?? fullRaiseActions.some(record => previousFullRaises(preflop, preflop.indexOf(record)) === 2)) ? 1 : 0;
   const result = handResult(summary);
   const trueShowdown = Boolean(summary.trueShowdown);
   const playerNetBB = summary.bigBlind > 0 ? summary.playerNet / summary.bigBlind : 0;
@@ -242,14 +242,14 @@ export function createHandStatsFact(summary: HandSummary, careerId: string): Han
     timestamp: summary.timestamp, startingHand, bigBlind: summary.bigBlind, initialStack, effectiveStackBB,
     hands: 1, ...result,
     playerNet: summary.playerNet, playerNetBB, finalPot: summary.finalPot,
-    vpip: summary.vpip ? 1 : 0, pfr: pfrActions.length > 0 ? 1 : 0,
+    vpip: summary.vpip ? 1 : 0, pfr: (summary.pfr ?? pfrActions.length > 0) ? 1 : 0,
     vpipKnown: summary.vpip !== undefined || records.length > 0,
     pfrKnown: summary.pfr !== undefined || records.length > 0,
     foldPreflopKnown: summary.foldPreflop !== undefined || records.length > 0,
     threeBetKnown: summary.threeBetOpportunity !== undefined || records.length > 0,
     fourBetKnown: summary.fourBetOpportunity !== undefined || records.length > 0,
     streetKnown: summary.sawFlop !== undefined && summary.sawTurn !== undefined && summary.sawRiver !== undefined,
-    foldPreflop: playerActions.some((record) => record.action === 'fold') ? 1 : 0,
+    foldPreflop: (summary.foldPreflop ?? playerActions.some(record => record.action === 'fold')) ? 1 : 0,
     threeBetOpportunity, threeBet, fourBetOpportunity, fourBet,
     allIn: summary.allIn ? 1 : 0, allInCall: summary.allInCall ? 1 : 0,
     sawFlop: summary.sawFlop ? 1 : 0, sawTurn: summary.sawTurn ? 1 : 0, sawRiver: summary.sawRiver ? 1 : 0,

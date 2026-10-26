@@ -83,6 +83,7 @@ export function createCareer(nickname: string): CareerState {
     statistics: createEmptyStatistics(10_000),
     handHistory: [],
     handStats: [],
+    handStatsVersion: 1,
     recordedHandIds: [],
     financialTransactions: [],
     pendingCashBuyIns: [],

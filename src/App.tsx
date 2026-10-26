@@ -1,3 +1,4 @@
+import { playGameSound, unlockGameAudio } from './audio/gameAudio';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CareerState } from './career/careerState';
 import { createDeck, shuffleDeck } from './game/cards';
@@ -25,11 +26,11 @@ import { flushGamePersistenceQueue, useGameStore } from './store/gameStore';
 import { useSettingsStore } from './store/settingsStore';
 import { buildPlayerModels } from './ai/playerModel';
 import { selectAiNames } from './ai/names';
-import { loadCareer, loadHandSnapshot, saveCareerAndHandSnapshot } from './storage/saveSystem';
+import { loadCareer, loadHandSnapshot, saveCareerAndHandSnapshot, saveCareerAndClearHand } from './storage/saveSystem';
 import { CURRENT_SAVE_VERSION } from './types/persistence';
 import { cancelPendingCashBuyIn, syncActiveTableStack } from './career/cashBuyInService';
 import { persistPreparedCashNextHandTransition, prepareCashNextHandTransition, type PreparedCashNextHandTransition } from './career/cashBuyInTransition';
-import { leaveTable } from './career/careerService';
+import { leaveTable, applyBankruptcyProtection } from './career/careerService';
 import { startTournamentHand, settleTournamentHand } from './tournament/tournamentEngine';
 import { finishTournament, forfeitTournament } from './tournament/tournamentSettlement';
 import { fastSimulateTournamentToEnd } from './tournament/fastSimulation';
@@ -135,7 +136,7 @@ export function handSummary(state: GameState): HandSummary | null {
   const playerRefund = (state.refunds ?? [])
     .filter((refund) => refund.playerId === human.id)
     .reduce((sum, refund) => sum + refund.amount, 0);
-  const humanAllIn = state.actionHistory.some((record) => record.playerId === human.id && record.action === 'all-in');
+  const humanAllIn = (human.allIn && human.handContribution > 0) || state.actionHistory.some((record) => record.playerId === human.id && record.action === 'all-in');
   const humanVpip = state.actionHistory.some((record) => record.playerId === human.id
     && record.street === 'PRE_FLOP'
     && !record.isBlind
@@ -191,6 +192,7 @@ export function handSummary(state: GameState): HandSummary | null {
     result: human.folded ? 'FOLD' : playerAward === 0 ? 'LOSS' : hasSplitPot ? 'SPLIT' : wonAllEligiblePots ? 'WIN' : 'PARTIAL_WIN',
     actionHistory: state.actionHistory.map((record) => ({ ...record })),
     playerNames: Object.fromEntries(state.players.map((player) => [player.id, player.name])),
+    refunds: state.refunds?.map(refund => ({ ...refund })),
     potResults: state.pots.map((pot) => ({ amount: pot.amount, eligiblePlayerIds: [...pot.eligiblePlayerIds], winnerPlayerIds: [...pot.winnerPlayerIds], awards: pot.awards.map((award) => ({ ...award })) })),
     allIn: humanAllIn,
     allInWon: humanAllIn && playerAward > 0,
@@ -201,7 +203,7 @@ export function handSummary(state: GameState): HandSummary | null {
     fourBetOpportunity: Boolean(preflopActions.some((record) => record.raiseOpportunity && fullRaisesBefore(record) === 2)),
     fourBet: Boolean(fourBetRecord),
     foldPreflop: Boolean(foldAction?.street === 'PRE_FLOP'),
-    allInCall: state.actionHistory.some((record) => record.playerId === human.id && record.action === 'all-in' && record.isAllInCall),
+    allInCall: state.actionHistory.some((record) => record.playerId === human.id && (record.action === 'all-in' || record.action === 'call') && (record.isAllInCall || record.stackBeforeAction !== undefined && record.amount >= record.stackBeforeAction)),
     sawFlop: sawStreet('FLOP', 3),
     sawTurn: sawStreet('TURN', 4),
     sawRiver: sawStreet('RIVER', 5),
@@ -241,9 +243,14 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cashBuyInError, setCashBuyInError] = useState<string | null>(null);
   const [tournamentResult, setTournamentResult] = useState<TournamentState | null>(initialGame?.tournamentState ?? null);
+  const audioHand = useRef<string | null>(null);
+  useEffect(() => {
+    if (game?.handId && game.handId !== audioHand.current) { audioHand.current = game.handId; playGameSound('deal', () => useSettingsStore.getState().soundEnabled); }
+  }, [game?.handId]);
   const recordedSettlement = useRef<string | null>(null);
   const hydratedInitialGame = useRef(false);
   const cashTransitionInFlight = useRef(false);
+  const cashExitInFlight = useRef(false);
 
   useEffect(() => { if (initialCareer && !storeCareer) setCareer(initialCareer); }, [initialCareer, setCareer, storeCareer]);
   useEffect(() => {
@@ -276,7 +283,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const handId = game.handId;
     const settle = () => {
       const current = useGameStore.getState().game;
-      if (!current || current.street !== 'SHOWDOWN' || current.handId !== handId) return;
+      if (cashExitInFlight.current || cashTransitionInFlight.current || !current || current.street !== 'SHOWDOWN' || current.handId !== handId) return;
       setGame(settleGameState(current).state);
     };
     const timer = setTimeout(settle, showdownDisplayDelayMs(animationSpeed));
@@ -288,11 +295,13 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     const summary = handSummary(tableState);
     if (summary && useCareerStore.getState().career) {
       recordHand(summary);
+      if (summary.playerNet > 0) playGameSound('win', () => useSettingsStore.getState().soundEnabled);
       recordedSettlement.current = tableState.handId;
     }
   };
 
-  const finishTableExit = (tableState: GameState) => {
+  const finishTableExit = async (tableState: GameState) => {
+    if (cashExitInFlight.current || cashTransitionInFlight.current) return;
     recordSettledHand(tableState);
     const currentCareer = useCareerStore.getState().career;
     if (tableState.matchType === 'MINI_TOURNAMENT') {
@@ -314,9 +323,19 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
       return;
     }
     if (currentCareer && currentCareer.activeTableStack !== null) {
-      const exitCareer = finishTableExitTransition(currentCareer, tableState);
-      setCareer(exitCareer);
-      applyBankruptcy();
+      cashExitInFlight.current = true;
+      try {
+        const exitCareer = applyBankruptcyProtection(finishTableExitTransition(currentCareer, tableState));
+        await flushCareerPersistenceQueue();
+        await flushGamePersistenceQueue();
+        await saveCareerAndClearHand(exitCareer);
+        setCareer(exitCareer);
+        setGameWithoutPersistence(null);
+        setView('CAREER');
+      } catch (error) {
+        setCashBuyInError(error instanceof Error ? error.message : '离桌保存失败，请重试');
+      } finally { cashExitInFlight.current = false; }
+      return;
     }
     setGame(null);
     setView('CAREER');
@@ -354,10 +373,13 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     setView('GAME');
   };
   const handleLeave = () => {
+    if (cashTransitionInFlight.current || cashExitInFlight.current) return;
     const current = useGameStore.getState().game;
     if (!current) { setView('CAREER'); return; }
     if (current.street === 'SHOWDOWN') {
-      finishTableExit(settleGameState(current).state);
+      const settled = settleGameState(current).state;
+      setGameWithoutPersistence(settled);
+      void finishTableExit(settled);
       return;
     }
     if (current.street === 'SETTLEMENT') {
@@ -367,7 +389,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     requestLeave();
   };
   const continueHand = async () => {
-    if (cashTransitionInFlight.current) return;
+    if (cashTransitionInFlight.current || cashExitInFlight.current) return;
     const current = useGameStore.getState().game;
     if (!current || current.street !== 'SETTLEMENT') return;
     const human = current.players.find((player) => player.isHuman);
@@ -434,6 +456,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     setGame(createNextHand(current));
   };
   const requestTableBuyIn = (targetStack: number) => {
+    if (cashTransitionInFlight.current || cashExitInFlight.current) return;
     const current = useGameStore.getState().game;
     const currentCareer = useCareerStore.getState().career;
     if (!current || !currentCareer || current.matchType === 'MINI_TOURNAMENT') return;
@@ -450,6 +473,7 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
     }
   };
   const cancelTableBuyIn = () => {
+    if (cashTransitionInFlight.current || cashExitInFlight.current) return;
     const current = useGameStore.getState().game;
     const transaction = useCareerStore.getState().career?.pendingCashBuyIns.find((entry) => entry.status === 'PENDING' && entry.sessionId === current?.sessionId);
     if (transaction) useCareerStore.getState().cancelPendingCashBuyIn(transaction.transactionId);
@@ -498,5 +522,5 @@ export function App({ initialCareer, initialGame, initialView }: { initialCareer
   else if (view === 'HISTORY' && career) content = <HistoryPage career={career} />;
   else if (view === 'SETTINGS') content = <SettingsPage />;
   else content = <HomePage career={career} loadError={loadError} onContinue={() => setView('CAREER')} onNewCareer={startNewCareer} onNavigate={(next) => setView(next)} />;
-  return <div className="app-shell" style={{ '--color-bg': '#FFFFFF' } as React.CSSProperties}><header className="app-header"><button className="brand-button" disabled={Boolean(game)} onClick={() => navigate('HOME')}>本地德州扑克生涯</button><nav>{career && !game && <><button className="link-button" onClick={() => navigate('CAREER')}>生涯</button><button className="link-button" onClick={() => navigate('TABLE_SELECT')}>牌桌</button><button className="link-button" onClick={() => navigate('SETTINGS')}>设置</button></>}</nav></header>{loadError && view !== 'HOME' && <p className="load-error" role="alert">{loadError}</p>}{cashBuyInError && game && <p className="cash-buy-in-status cash-buy-in-status--error" role="alert">{cashBuyInError}</p>}{content}</div>;
+  return <div className="app-shell" onPointerDown={() => unlockGameAudio(useSettingsStore.getState().soundEnabled)} onKeyDown={() => unlockGameAudio(useSettingsStore.getState().soundEnabled)} style={{ '--color-bg': '#FFFFFF' } as React.CSSProperties}><header className="app-header"><button className="brand-button" disabled={Boolean(game)} onClick={() => navigate('HOME')}>本地德州扑克生涯</button><nav>{career && !game && <><button className="link-button" onClick={() => navigate('CAREER')}>生涯</button><button className="link-button" onClick={() => navigate('TABLE_SELECT')}>牌桌</button><button className="link-button" onClick={() => navigate('SETTINGS')}>设置</button></>}</nav></header>{loadError && view !== 'HOME' && <p className="load-error" role="alert">{loadError}</p>}{cashBuyInError && game && <p className="cash-buy-in-status cash-buy-in-status--error" role="alert">{cashBuyInError}</p>}{content}</div>;
 }

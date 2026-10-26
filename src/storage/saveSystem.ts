@@ -75,6 +75,27 @@ function ensureHandStatsFromHistory(career: CareerState): void {
   }, []);
 }
 
+/** Repair only metrics proved by retained public records; preserve older facts. */
+function repairHandStats(career: CareerState): boolean {
+  if (career.handStatsVersion === 1) return false;
+  const facts = new Map((career.handStats ?? []).map(fact => [fact.factKey, { ...fact }]));
+  for (const summary of career.handHistory) {
+    const derived = createHandStatsFact(summary, career.careerId ?? career.createdAt);
+    if (!derived) continue;
+    const fact = facts.get(derived.factKey);
+    if (!fact) { facts.set(derived.factKey, derived); continue; }
+    if (summary.pfr !== undefined) { fact.pfr = derived.pfr; fact.pfrKnown = true; }
+    if (summary.foldPreflop !== undefined) { fact.foldPreflop = derived.foldPreflop; fact.foldPreflopKnown = true; }
+    if (summary.threeBetOpportunity !== undefined) { fact.threeBetOpportunity = derived.threeBetOpportunity; fact.threeBetKnown = true; }
+    if (summary.threeBet !== undefined) fact.threeBet = derived.threeBet;
+    if (summary.fourBetOpportunity !== undefined) { fact.fourBetOpportunity = derived.fourBetOpportunity; fact.fourBetKnown = true; }
+    if (summary.fourBet !== undefined) fact.fourBet = derived.fourBet;
+  }
+  career.handStats = [...facts.values()];
+  career.handStatsVersion = 1;
+  return true;
+}
+
 export async function loadCareer(): Promise<LoadResult> {
   const current = await readRecord('career', 'current');
   const backup = await readRecord('career', 'backup');
@@ -101,10 +122,11 @@ export async function loadCareer(): Promise<LoadResult> {
       return { status: 'corrupt', career: null, restoredFromBackup: false, error: `存档无法恢复: ${String((backupError as Error)?.message ?? currentError)}` };
     }
   }
+  const metricsRepaired = repairHandStats(career);
   const initialized = initializeTournamentCareer(career);
   const loadedCareer = historyTrimmed(initialized);
   let migrationError: string | undefined;
-  if (initialized !== career) {
+  if (initialized !== career || metricsRepaired) {
     // Save the migration marker and counters together. Preserve the valid backup
     // rather than rotating a possibly corrupt current record into its place.
     try {
@@ -166,6 +188,18 @@ export async function loadHandSnapshot(): Promise<HandSnapshot | null> {
     }
   }
   return null;
+}
+
+/** Cash-out career and removal of resumable hands share one durable boundary. */
+export async function saveCareerAndClearHand(career: CareerState): Promise<void> {
+  const record = careerRecord(career);
+  const records: { storeName: StoreName; key: string; value: unknown }[] = [];
+  for (const key of ['current', 'backup']) {
+    records.push({ storeName: 'career', key, value: record });
+    records.push({ storeName: 'handHistory', key, value: { entries: record.career.handHistory } });
+    records.push({ storeName: 'handStats', key, value: handStatsRecord(career) });
+  }
+  await writeRecords(records, [{storeName:'currentHand',key:'current'},{storeName:'currentHand',key:'backup'}]);
 }
 
 export async function clearHandSnapshot(): Promise<void> {

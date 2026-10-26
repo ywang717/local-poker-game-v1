@@ -129,7 +129,7 @@ describe('cash buy-in table UI', () => {
     useGameStore.setState({ game, paused: false, leaveRequested: false, zeroStackChoice: false });
     const host = await mount(game);
     await act(async () => host.querySelector<HTMLButtonElement>('.settlement-controls .button--secondary')!.click());
-    expect(useGameStore.getState().game).toBeNull();
+    await act(async () => { await vi.waitFor(() => expect(useGameStore.getState().game).toBeNull()); });
     expect(useCareerStore.getState().career?.pendingCashBuyIns[0].status).toBe('REFUNDED');
     expect(useCareerStore.getState().career?.currentFunds).toBe(10_975);
   });

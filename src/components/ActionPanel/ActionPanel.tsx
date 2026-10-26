@@ -8,7 +8,7 @@ export function ActionPanel({ game, playerId, onAction }: { game: GameState; pla
   const raiseRule = legal.find((entry) => entry.kind === 'raise-to' || entry.kind === 'bet-to');
   const [amount, setAmount] = useState(0);
   const allInConfirmation = useSettingsStore((state) => state.allInConfirmation);
-  const submitRaise = raiseRule && 'minAmount' in raiseRule && amount >= raiseRule.minAmount && amount <= raiseRule.maxAmount;
+  const submitRaise = Number.isSafeInteger(amount) && raiseRule && 'minAmount' in raiseRule && amount >= raiseRule.minAmount && amount <= raiseRule.maxAmount;
   const has = (kind: string) => legal.some((entry) => entry.kind === kind);
   const potAmount = game.players.reduce((sum, player) => sum + player.handContribution, 0);
   const quickBet = (fraction: number) => {
