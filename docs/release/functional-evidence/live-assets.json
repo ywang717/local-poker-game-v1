@@ -1,0 +1,17 @@
+[
+  {
+    "path": "/local-poker-game-v1/assets/index-ByNAT7k5.js",
+    "sha256": "7bb7b4e35137538db62767f659923fc54053ab3d77407ed8af8155e343f2b606",
+    "matchesLocal": true
+  },
+  {
+    "path": "/local-poker-game-v1/assets/index-kEwqtHTB.css",
+    "sha256": "ce5024b2b346b3faafc9e7a4c81a71c12f723ecae99139c8789463eb76836e21",
+    "matchesLocal": true
+  },
+  {
+    "path": "/local-poker-game-v1/sw.js",
+    "sha256": "fcefaa5c9b127fa8654b1fcefe48148ba8a1b25934e341a7bc9d368095557338",
+    "matchesLocal": true
+  }
+]

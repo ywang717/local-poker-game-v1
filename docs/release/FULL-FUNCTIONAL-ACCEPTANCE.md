@@ -53,7 +53,7 @@
 
 ## 功能结果索引
 
-以下PASS指本地生产构建；线上修复版尚未部署，不能由本地结果代替。
+表中PASS已由本地生产构建回归及发布后真实线上操作核对。固定状态边界仍明确属于引擎生成测试存档，不等同自然打牌碰到该情形；实体设备与未逐一覆盖的组合另列。
 
 | 检查 | 数据/组件回归 | 真实浏览器 | 证据 |
 |---|---|---|---|
@@ -69,9 +69,9 @@
 | 四下注阶段恢复、Pending恢复、损坏存档备份 | PASS | PASS | restore-*；pending-buyin-reload；corrupt-save-backup |
 | 全下/边池/Applied/淘汰状态恢复 | PASS（相关存档、资金、锦标赛回归） | 部分PASS（锦标赛结果及Pending）；每一种组合逐一浏览器刷新NOT RUN | tests/storage；tests/tournament |
 | PWA离线启动 | PASS（缓存构建） | Chromium PASS；WebKit NOT RUN | offline-and-reload |
-| 版本更新后保留存档 | NOT RUN | NOT RUN（等待发布） | update-profile.json已记录更新前状态 |
+| 版本更新后保留存档 | PASS | PASS（同一隔离Chrome配置、真实旧缓存更新） | update-result.json；online-update-preserved.png |
 
-浏览器没有逐一覆盖每种设置值下的全部操作组合，动画三档的实际时间差、关闭自动亮牌后的全部摊牌情形、实体扬声器听感为NOT RUN；保存与相关组件行为已有测试。普通Bet/Raise专门人工点击链未单列为浏览器用例，由组件/引擎回归及自动对局覆盖，不能视作独立人工验收通过。
+补充真实浏览器检查：两种模式普通Bet/Raise、所有设置保存恢复、关闭短牌提示及自动亮牌、牌型顺序与关闭按钮/遮罩，共14项全部PASS。没有逐一覆盖每种设置值下的所有操作组合；三档动画实际时间差、实体扬声器听感仍为NOT RUN，不能由保存或组件测试替代。
 
 ## 浏览器检查
 
@@ -80,19 +80,28 @@
 - 每个可通过用例均检查Console与HTTP错误并保存截图。暂停NORMAL/2X时核对行动历史停止，恢复后继续；INSTANT贯穿实际对局用例。
 - 本地浏览器102项：101 PASS、0 FAIL、1 NOT RUN（WebKit离线导航平台限制）。
 - 本地最新结果与截图：`functional-evidence/local-results.json`（发布前保存）。
-- 线上发布前已确认历史分页缺陷；修复后结果将补入下面发布章节。
+- 线上发布前已确认历史分页缺陷；修复后网站已完成分页与详情同步验收，结果见发布章节。
 
 ## 发布与线上结果
 
-发布阻塞（2026-10-26）：
+- 修复源提交：`4186c96e0aab5f577e16581e9adb309abf1f8101`。
+- 已发布 main 提交：`225f80f0d04f08a1e280179a1665842f9b44d3a5`；远端树与本地完全一致：`12d02d51f1e030a8329e154c611287b3a8cb5348`。
+- [GitHub Actions 40280584537](https://github.com/ywang717/local-poker-game-v1/actions/runs/40280584537)：**SUCCESS**。依赖安装、Typecheck、485默认测试、134 AI测试、26补码测试、21锦标赛测试、发布Smoke、Build、Pages部署均成功。
+- CI Smoke只出现一个执行步骤，800手AI + 600手规则 + 20场锦标赛；默认测试继续排除大型矩阵与release目录。没有增加十万手或14K矩阵。
+- [正式网站](https://ywang717.github.io/local-poker-game-v1/) 已发布并复测。
+- 发布后主浏览器验收102项：**101 PASS、0 FAIL、1 NOT RUN**（WebKit离线导航自动化限制）；补充浏览器14项：**14 PASS、0 FAIL**。合计116项：**115 PASS、0 FAIL、1 NOT RUN**。
+- 每个通过用例Console错误及HTTP失败均为0；截图在隔离配置中收集，未操作用户原生涯。
+- 真实更新保留：同一个Chrome配置从旧脚本 `index-1cIBA81U.js` 更新到 `index-ByNAT7k5.js` 后，昵称“更新存档保留测试”、资金10,000、静音设置全部保留，**PASS**。
+- JS、CSS、Service Worker线上文件与本地生产构建逐字节匹配，SHA-256记录见 `functional-evidence/live-assets.json`。
+- 首次线上脚本有三处时序失败：快速结算使操作区在定位时消失、AI先弃牌后座位已按设计隐藏；修正验收脚本以检查当前有效状态后，同用例复测通过，没有通过吞掉真实错误来跳过验收。补充设置脚本的标签/首页导航定位也在独立复测后通过。
+- 最终后续提交仅更新报告、截图、浏览器验收工具，使用 `[skip ci]` 避免再次部署完全相同的游戏资源；已部署游戏源仍是上述225f80f，生产源与构建配置没有后续改动。
 
-- 本地修复提交：`4186c96e0aab5f577e16581e9adb309abf1f8101`；树 `f92abbef8ad20d47040e04f796348e2318c26a63`。
-- 远端 main 实查仍为 `1a999ec28ff60592d3593384e12747550b0abcbe`，未覆盖他人提交。
-- 普通推送失败：Git 无法取得 GitHub 用户名/凭据；现有 GitHub 连接创建 Blob 返回403（Resource not accessible by integration）。
-- 浏览器自动化报告 Mac 锁定，仓库网页无法打开；已请求用户解锁后继续。
-- GitHub Actions本次修复运行：NOT RUN；Pages本次修复部署：NOT RUN；修复后线上全量复测：NOT RUN。
-- 更新前的独立生涯已保存：昵称“更新存档保留测试”、资金10,000、音效关闭；更新前资源 `index-1cIBA81U.js`。更新后保留验证：NOT RUN。
-- 已有网站仍可访问：https://ywang717.github.io/local-poker-game-v1/ 。可访问不等于本次修复已部署。
+证据：
+
+- `functional-evidence/online-results.json`、`online-extra-results.json`：逐用例PASS/NOT RUN、视口、耗时及错误数组。
+- `functional-evidence/actions-result.json`：实际运行编号、提交、步骤与部署结果。
+- `functional-evidence/update-result.json`、`live-assets.json`：缓存更新存档保留与资源校验。
+- 截图：`online-chromium-mobile.png`、`online-chromium-history-statistics.png`、`online-update-preserved.png`。
 
 ## 限制与未执行项
 
@@ -103,4 +112,68 @@
 
 ## 复现工具
 
-`functionalFixtures.ts`生成引擎固定样本；`functionalBrowser.mjs`执行隔离浏览器验收；`functionalUpdateProbe.mjs`验证同一浏览器配置在部署更新前后保留生涯和设置。工具通过PLAYWRIGHT_MODULE使用已提供Playwright，未新增游戏运行时依赖或生产调试接口。
+`functionalFixtures.ts`生成引擎固定样本；`functionalBrowser.mjs`执行隔离浏览器验收；`functionalExtraFixtures.ts`和`functionalBrowserExtras.mjs`补测普通下注、设置和提示；`functionalUpdateProbe.mjs`验证同一浏览器配置在部署更新前后保留生涯和设置。工具通过PLAYWRIGHT_MODULE使用已提供Playwright，未新增游戏运行时依赖或生产调试接口。
+
+## 修改文件
+
+- `.gitignore`
+- `docs/release/FULL-FUNCTIONAL-ACCEPTANCE.md`
+- `docs/release/functional-evidence/actions-result.json`
+- `docs/release/functional-evidence/live-assets.json`
+- `docs/release/functional-evidence/local-chromium-history-and-statistics.png`
+- `docs/release/functional-evidence/local-chromium-tournament-STANDARD-human.png`
+- `docs/release/functional-evidence/local-results.json`
+- `docs/release/functional-evidence/local-webkit-layout-390x844.png`
+- `docs/release/functional-evidence/online-chromium-history-statistics.png`
+- `docs/release/functional-evidence/online-chromium-mobile.png`
+- `docs/release/functional-evidence/online-extra-results.json`
+- `docs/release/functional-evidence/online-results.json`
+- `docs/release/functional-evidence/online-update-preserved.png`
+- `docs/release/functional-evidence/update-result.json`
+- `scripts/functionalBrowser.mjs`
+- `scripts/functionalBrowserExtras.mjs`
+- `scripts/functionalExtraFixtures.ts`
+- `scripts/functionalFixtures.ts`
+- `scripts/functionalUpdateProbe.mjs`
+- `src/App.tsx`
+- `src/ai/postflop.ts`
+- `src/audio/gameAudio.ts`
+- `src/career/careerService.ts`
+- `src/career/careerState.ts`
+- `src/career/handHistory.ts`
+- `src/career/handStats.ts`
+- `src/components/ActionPanel/ActionPanel.tsx`
+- `src/components/HandReview/HandReview.tsx`
+- `src/components/PokerTable/PokerTable.tsx`
+- `src/components/PotDisplay/PotDisplay.tsx`
+- `src/game/betting.ts`
+- `src/pages/History/HistoryPage.tsx`
+- `src/pages/TournamentResult/TournamentResultPage.tsx`
+- `src/storage/migrations.ts`
+- `src/storage/saveSystem.ts`
+- `src/store/gameStore.ts`
+- `src/styles/theme.css`
+- `tests/ai/postflop.test.ts`
+- `tests/ai/shortDeckDrawConsistency.test.ts`
+- `tests/career/allInSummary.test.ts`
+- `tests/career/fullFunctionalStatistics.test.ts`
+- `tests/game/callAllInMetadata.test.ts`
+- `tests/pwa/pwaAssets.test.ts`
+- `tests/storage/handStatsPersistence.test.ts`
+- `tests/ui/audioEffects.test.ts`
+- `tests/ui/cashBuyIn.test.tsx`
+- `tests/ui/fullFunctionalRegression.test.tsx`
+- `tests/ui/leaveTableRecovery.test.tsx`
+- `tests/ui/selectionMatrix.test.tsx`
+- `vite.config.ts`
+
+## 复现命令
+
+先运行 `./node_modules/.bin/vite-node scripts/functionalFixtures.ts`；补充样本使用 `./node_modules/.bin/vite-node scripts/functionalExtraFixtures.ts`。设置 `PLAYWRIGHT_MODULE` 为环境随附Playwright的绝对入口路径后，分别运行：
+
+```bash
+node scripts/functionalBrowser.mjs --tag online-check --url https://ywang717.github.io/local-poker-game-v1/
+node scripts/functionalBrowserExtras.mjs --tag online-extra-check --url https://ywang717.github.io/local-poker-game-v1/
+```
+
+每次使用新的tag保留独立结果；`--resume`仅重试同一tag失败或尚未生成结果的项目；已标记NOT RUN的平台限制保留，不自动重试，也不把它计入PASS。WebKit已知平台离线错误显式记录NOT RUN。不要把新的before更新探针当作已部署旧版存档；本报告的真实旧版更新保留证据来自发布前创建的持久浏览器配置。

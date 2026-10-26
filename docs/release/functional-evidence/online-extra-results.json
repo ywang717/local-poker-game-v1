@@ -1,0 +1,174 @@
+{
+  "url": "https://ywang717.github.io/local-poker-game-v1/",
+  "tag": "online-extra",
+  "results": [
+    {
+      "id": "raise-STANDARD",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 3.138
+    },
+    {
+      "id": "bet-STANDARD",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.88
+    },
+    {
+      "id": "raise-SHORT_DECK",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.23
+    },
+    {
+      "id": "bet-SHORT_DECK",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.989
+    },
+    {
+      "id": "guide-and-hide-result-STANDARD",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.857
+    },
+    {
+      "id": "guide-and-hide-result-SHORT_DECK",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.247
+    },
+    {
+      "id": "raise-STANDARD",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.627
+    },
+    {
+      "id": "bet-STANDARD",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 3.038
+    },
+    {
+      "id": "raise-SHORT_DECK",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 3.311
+    },
+    {
+      "id": "bet-SHORT_DECK",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 3.538
+    },
+    {
+      "id": "guide-and-hide-result-STANDARD",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.492
+    },
+    {
+      "id": "guide-and-hide-result-SHORT_DECK",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 2.417
+    },
+    {
+      "id": "settings-full-persistence",
+      "engine": "chromium",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 3.83
+    },
+    {
+      "id": "settings-full-persistence",
+      "engine": "webkit",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "status": "PASS",
+      "consoleErrors": [],
+      "networkErrors": [],
+      "seconds": 3.734
+    }
+  ]
+}
